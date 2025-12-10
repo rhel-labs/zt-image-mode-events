@@ -26,6 +26,8 @@ Then we'll add the following lines to our Containerfile where we removed the FAP
 
 [source,bash,role="execute",subs=attributes+]
 ----
+RUN dnf -y install audit fapolicyd openscap-utils scap-security-guide setroubleshoot-server
+
 ENV profileID=cis_server_l1_customized
 
 COPY $profileID.xml /tmp/$profileID.xml
