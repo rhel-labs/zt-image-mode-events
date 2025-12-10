@@ -2,15 +2,7 @@
 This is a decent start for our gold image, but let's address a few more topics.
 Our goals are to centralize our configuration and build processes while making it easier to work acrross teams.
 
-Let's update the timer.
-In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
-One simple way to disable the timer is to mask the service with `systemd`. 
-This will ensure that the service isn't unexpectedly enabled after a change or update.
-Since this is a systemd timer, you can manange and modify the defintion to fit your environment by creating a new service file.
-[source,dockerfile,role="execute",subs=attributes+]
-----
-RUN systemctl mask bootc-fetch-apply-updates.timer
-----
+_Before proceeding, make sure you have changed back to the tab labeled "Build host'._
 
 One of the benefits of containerized builds is extra metadata available by default.
 Instead of relying on naming conventions or `bootc status` output, we can add information to the images via labels.
@@ -18,6 +10,15 @@ Instead of relying on naming conventions or `bootc status` output, we can add in
 Let's add some basic information, the contact email for the team who owns the image and the "vendor", here our company.
 These will be added and can be queried remotely in the registry.
 There are other labels that are created by Red Hat when published that include RHEL version and more.
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
+
+These can go anywhere, but typically they will be near the start of the Containerfile, after the `FROM` line.
+Remember, like any other container image build, `bootc` image builds will also use the local build cache.
+If you place these before the package install you will trigger all of those steps in the build.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Set up some variables and labels to ID images in our environments
@@ -26,20 +27,9 @@ MAINTAINER sysadmins@example.com
 LABEL vendor="Example Corp" 
 ----
 
-The `bootc` command has a built-in linting command to highlight potential problems with a built image.
-This will help catch issues that may only show up after install and other specific operations.
-The conditions caught by linting are always being improved as time goes on.
-[source,dockerfile,role="execute",subs=attributes+]
-----
-RUN bootc container lint
-----
 We briefly mentioned that responsibility for `/etc` is split between the image and the running host.
-This means we can centralize common configs in our builds, while allowing for runtime flexibility.
-
-We'll take a page from application container design and use the `COPY` directive to manage our central configs as if they were directories.
-The configs we have created so far will move into those directories, reducing the number of commands and therefor the number of layers created by the build.
-Each directive in the Containerfile adds a new layer to the resulting image.
-Understanding layering will help design images that make the most efficient use of the local build cache and network updates.
+This allows for centralizing common configs in our builds, while allowing for runtime flexibility.
+Most of the image controlled system software is in `/usr` making it a good location for things we absolutely want controlled via the image only.
 
 First, let's set up a directory structure that mimics `/etc` and `/usr` and  move the files we created inside. 
 This allows us to add all the configs at once with a single command and in a single layer of the image.
@@ -68,11 +58,45 @@ mv 10-wheel etc/sudoers.d
 mv console_kargs.conf usr/lib/bootc/kargs.d/05-cloud-kargs.toml
 ----
 
-Replace the individual file COPY lines with these two lines for our new directories. 
+Inspect the directories and files we just organized. 
+[source,bash,role="execute",subs=attributes+]
+----
+tree $(pwd)/{etc,usr}
+----
+....
+etc
+├── ostree
+└── sudoers.d
+    └── 10-wheel
+usr
+└── lib
+    └── bootc
+        └── kargs.d
+            └── 05-cloud-kargs.toml
+
+7 directories, 2 files
+....
+
+We'll take a page from application container design and use the `COPY` directive to manage our central configs as if they were directories on the end host.
+The configs we have created so far will move into those directories, reducing the number of commands and therefor the number of layers created by the build.
+Each directive in the Containerfile adds a new layer to the resulting image.
+Understanding layering will help design images that make the most efficient use of the local build cache and network updates.
+
+Replace the individual file COPY lines with these two lines to copy our new directories to the final host locations. 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 COPY etc/ /etc
 COPY usr/ /usr
+----
+
+We briefly mentioned that by default, there's a timer active that will apply updates to an image mode host.
+In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
+One simple way to disable the timer is to mask the service with `systemd`. 
+This will ensure that the service isn't unexpectedly enabled after a change or update.
+Since this is a systemd timer, you can manange and modify the defintion to fit your environment by creating a new service file.
+[source,dockerfile,role="execute",subs=attributes+]
+----
+RUN systemctl mask bootc-fetch-apply-updates.timer
 ----
 
 With our updated Containerfile, let's do a final build.
@@ -88,26 +112,38 @@ podman push registry-{guid}.{domain}/base
 
 ==== Test the update on the VM
 
-Apply our final update
+Previously, we staged the update and then manually rebooted the system into the staged image.
+This provides a lot of control to update before a maintenance window and apply the update when downtime can be negotiated.
+The `bootc` commands can also reboot immediately on success when given the `--apply` flag.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --apply
 ----
 
+Log back into the VM by clicking the `reconnect` button or the refresh icon in the tab title.
 
-OH NO rollback VM:
+There are other options for `upgrade` to help with planning changes to the hosts, like `--check`.
+This will compare the image in the registry with what's on the host.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc upgrade --check
 ----
+....
+error: Upgrading: Preparing import: Fetching manifest: failed to invoke method OpenImage: reading manifest latest in registry-z7ddq.apps.ocpvdev01.rhdp.net/base: authentication required.
+....
 
+Registry authentication error? Didn't we just apply an update from the registry?
+Check on the `auth.json` file to see what happened.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-ls /etc/ostree
+file /etc/ostree/auth.json
 ----
+....
+/etc/ostree/auth.json: cannot open `/etc/ostree/auth.json' (No such file or directory)
+....
 
-
+Something happened in our new image, check the status to see if we have a rollback available.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status
@@ -122,13 +158,20 @@ sudo bootc status
          Version: 10.1 (2025-11-13T17:30:16Z)
 ....
 
+Rolling back a `bootc` deployment just tells the bootloader to boot the previous deployment.
+This means the `/etc` files will revert to their state from that previous deployment and we'll discard any changes made here.
+This is also one of the reasons you may want to manage the update timer via the image instead of locally via `/etc`. 
+Use the `--apply` flag along with `rollback` to immediately switch back to the previous deployment.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc rollback --apply
 ----
 
 
-Back to builder to see why:
+While the VM reboots, swith cack to _Build host_ tab to see what happened.
+
+We should have moved the `auth.json` into our new local directories when we reorganized the config files.
+Check that first.
 [source,bash,role="execute",subs=attributes+]
 ----
 ll etc/ostree/
@@ -137,30 +180,46 @@ ll etc/ostree/
 total 0
 ....
 
+Ok, so that's odd.
+Did we miss that file?
 [source,bash,role="execute",subs=attributes+]
 ----
-ll .
+ls -al auth.json
 ----
+....
+-rw-------. 1 root root 98 Dec  9 20:02 auth.json
+....
+
+It looks like it got skipped, so move it into the right local path for the new `COPY` instruction.
 [source,bash,role="execute",subs=attributes+]
 ----
  mv auth.json etc/ostree/
 ----
 
+Since this is a file we added to the existing structure, there's no need to update the Containerfile to rebuild.
+This is one of the advantages of having this style of config directory structure, any changes made on the filesystem will be reflected on the host without the need to update the Containerfile.
 [source,bash,role="execute",subs=attributes+]
 ----
 podman build --file Containerfile --tag registry-{guid}.{domain}/base
 ----
 
+Notice the `COPY` step for `/etc` picked up the change.
+
+We can push the updated image to the registry.
 [source,bash,role="execute",subs=attributes+]
 ----
 podman push registry-{guid}.{domain}/base
 ----
 
-VM:
+_Switch to the VM tab and hit `reconnect` or the refresh button in the tab title_
+
+With the previous deployment booted, we should have the `auth.json` where we expect and can update the host.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --apply
 ----
+
+Log back in and check to make sure the latest update includes our authentication fix.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --check
@@ -168,3 +227,9 @@ sudo bootc update --check
 ....
 No changes in: docker://registry-mjghb.apps.ocpvdev01.rhdp.net/base
 ....
+
+== Core principles
+In this exercise we focused on making some idomatic changes to the Containerfile and exploring how image mode hosts handle files. 
+We also saw how the built-in rollback capability can save time and effort to restore known good previous states without resorting to backups or other tools.
+
+We've satisfied the basic needs of the operations team, in the next section we'll tackle the security requiments and dig deeper into some of these topics.

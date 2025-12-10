@@ -1,19 +1,22 @@
-= Lab design
+= Lab design goals
 
 Creating production RHEL systems is a group effort, meeting the requirements of different teams to deliver applications in a secure and manageable fashion.
 
+The admin team uses a standard set of tools to manage RHEL hosts at scale.
+Common logging infrastructure, metrics gathtering, and user tools need to be in place for the team to have a seamless experience across the fleet.
+
+The security team have developed baselines for internet facing production systems.
+These meet auditing requirements, provide additional tooling, and impose certain design criteria on production applications.
+
 The developers have already been able to port the containerized version of the application to a bootc base, but this proof of concept doesn't include any support for the management infrastructure or meet the compliance requirements for a production web application.
 
-In this lab, you'll build an image mode host to support this new application based on the requirements of the developers and the security teams.
+In this lab, you'll build an image mode host to support this new application based on the requirements of all three teams.
+The design of a standard operating environment is a common practice that image mode provides some new options and capabilites to support.
 
 == Lab machines
 You will interact with a total of 5 systems: the primary build machine, a container registry, and image mode VMs.  Most of your work will be done on the lab hypervisor, and you will create image mode VMs as part of the exercises. Caution should be taken when instructed to reboot a system that you are on the correct host.
 
-== Lab diagram
-
-image::lab-diagram.png[]
-
-== System purpose
+=== System purpose
 
 *Container build host*: One of the main parts of this lab is the build environment. The primary lab machine serves as a basic container build environment. The RHEL container tools (podman, buildah, skopeo) will be used throughout this lab to do simple container creation. This is all that is needed for a basic build host. You will also create the Containerfiles and any other needed configuration files on this host.
 

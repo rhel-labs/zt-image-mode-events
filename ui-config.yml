@@ -4,19 +4,19 @@ antora:
   dir: www
   modules:
     - name: "module-01"
-      label: "System setup"
+      label: "Lab information"
       solveButton: false
     - name: "module-02"
-      label: "Building the first bootc container"
+      label: "Building the first bootc image"
       solveButton: false
     - name: "module-03"
-      label: "Deploying a virtual machine with bootc image"
+      label: "Deploying a virtual machine with a bootc image"
       solveButton: false
     - name: "module-04"
-      label: "Changing bootc hosts"
+      label: "Updating image mode hosts"
       solveButton: false
     - name: "module-05"
-      label: "Rolling back a bootc host"
+      label: "Rolling back an image mode host"
       solveButton: false
     - name: "module-06"
       label: "Applying RHEL updates to the bootc base images"
@@ -31,19 +31,19 @@ antora:
       label: "Embedding credentials in an image"
       solveButton: false
     - name: "module-10"
-      label: "Dev mod troubleshoot"
+      label: "Troubleshooting an image mode deployment"
       solveButton: false
     - name: "module-11"
-      label: "Dev mod rebase"
+      label: "Using the standard baseline image"
       solveButton: false
     - name: "module-12"
-      label: "Dev mod idiomatic"
+      label: "Exploring container build practices"
       solveButton: false
     - name: "module-13"
-      label: "Dev mod movin day"
+      label: "Derived builds and updating the chain"
       solveButton: false
     - name: "module-14"
-      label: "Extra dev mod"
+      label: "Extra RH1 module: Scratch builds and rechunking"
       solveButton: false
 
 tabs:
@@ -51,8 +51,19 @@ tabs:
     url: /wetty/ssh/root
   - name: "VM SSH session"
     url: /wetty_bootc_vm/ssh/root
+    modules:
+      - module-2
+      - module-3
+      - module-4
+      - module-5
   - name: "ISO SSH session"
     url: /wetty_iso_vm/ssh/root
+    modules:
+      - module-10
+      - module-11
+      - module-12
+      - module-13
+      - module-14
   - name: ">_ Image mode host"
     url: /wetty_imrhel/ssh/root
     modules:
