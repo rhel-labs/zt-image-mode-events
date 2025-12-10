@@ -100,7 +100,7 @@ Let's just update the working Containerfile to use the base from our registry an
 
 [source,bash,role="execute",subs=attributes+]
 ----
-vim Containerfile
+nano Containerfile
 ----
 
 [source,dockerfile,role="execute",subs=attributes+]
@@ -124,7 +124,7 @@ podman push registry-{guid}.{domain}/app-test:v2
 [#switch-run]
 == Switch and test the image
 
-Since we had issues with switching in our initial troubleshooting, log into the Security VM to test the new build.
+Since we had issues with switching in our initial troubleshooting, log into the _Security VM SSH session_ to test the new build.
 
 We'll use the same `bootc switch` command we did on the previous system and just let `bootc` restart the host once it's done.
 
@@ -152,11 +152,11 @@ ss -tnlp
 ----
 [source,bash,role="execute",subs=attributes+]
 ----
-firewall-cmd --list-services
+sudo firewall-cmd --list-services
 ----
 [source,bash,role="execute",subs=attributes+]
 ----
-firewall-cmd --add-service http
+sudo firewall-cmd --add-service http
 ----
 Is the app http://app-{guid}.{domain}/[up and running?,window=_blank]
 

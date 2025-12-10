@@ -138,3 +138,23 @@ if [ -d $TMPDIR/${EXAMPLE} ]; then
 fi
 rm -rf $TMPDIR
 
+# setup proxy for access to ISO vm application
+cat <<'EOF'> /etc/nginx/conf.d/proxy.conf
+server {
+    listen 8080;
+    listen [::]:8080;
+
+    server_name _;
+        
+    location / {
+            proxy_pass http://iso-vm; # Replace with your backend server's address
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+EOF
+
+systemctl start nginx.service 
+setsebool -P httpd_can_network_connect 1

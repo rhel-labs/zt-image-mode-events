@@ -98,7 +98,7 @@ From an output perspective, a switch looks the same as an update. There's a new 
 
 [source,bash,role="execute",subs=attributes+]
 ----
-bootc status -v
+bootc status
 ----
 ....
   Staged image: registry-bcsvm.apps.ocpvdev01.rhdp.net/app-test
@@ -161,6 +161,7 @@ Upstream packages have been moving to use `systemd tmpfiles` and `systemd sysuse
 The introduction of image mode has put some pressure on this migration, but you can already see the `nginx` package https://src.fedoraproject.org/rpms/nginx/blob/aff374fc9038f31a53370f5779f4d03df8fbbc6d/f/nginx.tmpfiles[already has a fix upstream.]
 
 == Workaround rebuild
+_Switch to the tab labeled "Build host terminal_
 
 Let's use the upstream fix to create a local version of nginx.tmpfiles in the system location. 
 This means when the new RPM lands, we can just remove this from our Containerfile and the system will continue to work as expected.
@@ -206,6 +207,9 @@ And of course push it to the local registry:
 ----
 podman push registry-{guid}.{domain}/app-test:v2
 ----
+
+=== Test the Workaround
+_Switch to the tab labeled "Image mode test host"_
 
 Let's use the `--apply` flag and immediately execute the reboot instead of checking the status first.
 [source,bash,role="execute",subs=attributes+]
