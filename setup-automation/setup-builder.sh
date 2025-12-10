@@ -147,6 +147,7 @@ server {
     server_name _;
         
     location / {
+            resolver 192.168.122.1;
             proxy_pass http://iso-vm; # Replace with your backend server's address
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
