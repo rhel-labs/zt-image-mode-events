@@ -37,4 +37,111 @@ If we head over to our bootc host, we can pull in the update, and reboot in orde
 sudo bootc update --apply
 ----
 
+== Uh Oh.... It looks like there's an error
+Remember how, in the last module, we had put some files in place in /etc/ostree?  Well when we did, we broke our authentication to our container registry.  It looks like we'll have to fix that before we can move ahead. 
 
+[source,bash,role="execute",subs=attributes+]
+----
+ls /etc/ostree
+----
+
+You can see here that our mcguffin is missing, so first let's roll back to a working image.  Bootc make's it easy to see what the latest image we were on is, and roll back to it.  Use bootc status to check the rollback image:
+
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc status
+----
+....
+● Booted image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
+        Digest: sha256:10eb5e2ebba0e549deb43315786731ff976d544f6f682c4cf30de0f4c371a059 (amd64)
+       Version: 10.1 (2025-11-13T17:17:56Z)
+
+  Rollback image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
+          Digest: sha256:d83d9f48a16e98c2d8ca2240f99ce0e2d2ffc5bc948d0434bff1810d2b58e6d5 (amd64)
+         Version: 10.1 (2025-11-13T17:30:16Z)
+....
+
+And then we can roll back easily using:
+
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc rollback --apply
+----
+
+
+Now, if we go back over to our build host, we can look to see where our Mcguffin went. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+ll etc/ostree/
+----
+....
+total 0
+....
+
+You can see that our auth.json file isnt there, because we overwrote /etc/ostree with the contents of etc/ostree.  
+
+[source,bash,role="execute",subs=attributes+]
+----
+ll .
+----
+
+But right here we have the auth.json, so our fix is simple, let's add it to the proper directory, and then build and push. 
+
+
+[source,bash,role="execute",subs=attributes+]
+----
+ mv auth.json etc/ostree/
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman build --file Containerfile --tag registry-{guid}.{domain}/base
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/base
+----
+
+This should give us a fixed authentication, AND our fapolicyd change from above (because we fixed the image, without removing fapolicyd),  Now, let's hop back over to our image mode vm, and deploy the newly fixed image.
+
+VM:
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc update --apply
+----
+And for good measure, let's double-check that bootc now properly authenticates by doing a simple check.
+
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc update --check
+----
+....
+No changes in: docker://registry-mjghb.apps.ocpvdev01.rhdp.net/base
+....
+
+## Testing FAPolicyd
+Our goal here was to deploy fapolicyd, so now that we have, let's see if its working. 
+
+The File Access Policy daemon's job is to prevent you from running unapproved applications.  Out of the box, it does this using a relatively simple application allow-list that has known trusted paths for installed binaries.  
+
+To test whether it's working, we can just take a known good binary, and put it somewhere odd, and then try to run it. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+cp /bin/ls ~
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+~/ls
+----
+
+You should not be allowed to run ls from your home directorn. 
+....
+$ ~/ls 
+-bash: /home/rhel/ls: Operation not permitted
+....
+
+Great! FAPolicyd works!  But, we're nowhere close to being compliant with a security policy, for that we'll need to do more than just install a service and enable it.  For that, we'll want to deploy a full policy.  You guessed it, in our next module we'll do just that! 
