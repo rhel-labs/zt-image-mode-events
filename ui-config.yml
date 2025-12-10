@@ -47,24 +47,26 @@ antora:
       solveButton: false
 
 tabs:
-  - name: "Build host"
+  - name: "Build host terminal"
     url: /wetty/ssh/root
-  - name: "VM SSH session"
+  - name: ">_ Ops SSH session"
     url: /wetty_bootc_vm/ssh/root
     modules:
-      - module-2
-      - module-3
-      - module-4
-      - module-5
-  - name: "ISO SSH session"
+      - module-02
+      - module-03
+      - module-04
+      - module-05
+      - module-06
+  - name: ">_ Security SSH session"
     url: /wetty_iso_vm/ssh/root
     modules:
+      - module-06
+      - module-07
+      - module-08
+      - module-09
       - module-10
-      - module-11
       - module-12
-      - module-13
-      - module-14
-  - name: ">_ Image mode host"
+  - name: ">_ Image mode test host"
     url: /wetty_imrhel/ssh/root
     modules:
       - module-10
