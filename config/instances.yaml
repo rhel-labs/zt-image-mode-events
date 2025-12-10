@@ -35,7 +35,6 @@ virtualmachines:
             protocol: TCP
             targetPort: 443
             name: registry
-    routes:
       - name: hostinfo
         ports:
           - port: 8080

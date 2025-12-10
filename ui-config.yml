@@ -64,8 +64,10 @@ tabs:
       - module-07
       - module-08
       - module-09
-      - module-10
+      - module-11
       - module-12
+      - module-13
+      - module-14
   - name: ">_ Image mode test host"
     url: /wetty_imrhel/ssh/root
     modules:
