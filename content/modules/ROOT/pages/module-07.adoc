@@ -4,10 +4,8 @@ We could add all of these various configuration changes directly to our Containe
 
 First, go back into your Containerfile, and delete the two lines we added to install and enable FAPolicyd. 
 
-Delete these:
+Delete this:
 ....
-RUN dnf -y install fapolicyd
-
 RUN systemctl enable fapolicyd
 ....
 
@@ -26,8 +24,6 @@ Then we'll add the following lines to our Containerfile where we removed the FAP
 
 [source,bash,role="execute",subs=attributes+]
 ----
-RUN dnf -y install audit fapolicyd openscap-utils scap-security-guide setroubleshoot-server
-
 ENV profileID=cis_server_l1_customized
 
 COPY $profileID.xml /tmp/$profileID.xml
@@ -81,3 +77,5 @@ You should see a score in the 90's like the output below:
 ....
     <score system="urn:xccdf:scoring:default" maximum="100.000000">92.530121</score>
 ....
+
+Great!  Now we have an immutable OS, that matches our standards.  But, what do we do about that inevitable drift?  In the next module we'll adress that. 
