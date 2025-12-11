@@ -54,7 +54,7 @@ virtualmachines:
         targetPort: 443
         tls: true
       - name: hostinfo
-        host: registry
+        host: hostinfo
         service: hostinfo
         targetPort: 8080
         tls: false

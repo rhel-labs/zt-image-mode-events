@@ -77,7 +77,7 @@ tabs:
       - module-13
       - module-14
   - name: "Hostinfo app"
-    url: http://builder-${guid}.${domain}:8080
+    url: http://hostinfo-${guid}.${domain}:8080
     external: false
     modules:
       - module-11
