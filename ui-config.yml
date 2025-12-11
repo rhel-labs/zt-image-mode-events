@@ -57,6 +57,7 @@ tabs:
       - module-04
       - module-05
       - module-06
+      - module-10
   - name: ">_ Security SSH session"
     url: /wetty_iso_vm/ssh/root
     modules:
@@ -68,17 +69,3 @@ tabs:
       - module-12
       - module-13
       - module-14
-  - name: ">_ Image mode test host"
-    url: /wetty_imrhel/ssh/root
-    modules:
-      - module-10
-      - module-11
-      - module-12
-      - module-13
-      - module-14
-  - name: "Hostinfo app"
-    url: http://hostinfo-${guid}.${domain}
-    external: false
-    modules:
-      - module-11
-      - module-12

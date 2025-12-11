@@ -8,7 +8,7 @@ server {
         
     location / {
             resolver 192.168.122.1;
-            proxy_pass http://bootc-vm; # Replace with your backend server's address
+            proxy_pass http://iso-vm; # Replace with your backend server's address
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -17,5 +17,4 @@ server {
 }
 EOF
 
-systemctl start nginx.service 
-setsebool -P httpd_can_network_connect 1
+systemctl restart nginx.service 
