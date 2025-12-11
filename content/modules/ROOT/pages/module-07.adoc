@@ -4,10 +4,7 @@ We could add all of these various configuration changes directly to our Containe
 
 First, go back into your Containerfile, and delete the two lines we added to install and enable FAPolicyd. 
 
-Delete this:
-....
-RUN systemctl enable fapolicyd
-....
+
 
 Now, to setup our openscap policy, we will first make a change to the policy using autotailor. In our case, this is so that we do not break our lab environment, but in the real world this is very relevant, as you will likely need to tailor any compliance policy to your organization's needs.  In our case we are simply turning root logins back on. 
 
@@ -20,7 +17,15 @@ On your build host, Run the following:
 autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login --new-profile-id cis_server_l1_customized --output cis_server_l1_customized.xml /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml cis_server_l1 
 ----
 
-Then we'll add the following lines to our Containerfile where we removed the FAPolicyd install and enable. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here.  This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
+Then we'll modify our Containerfile, removing the line where we endable just FAPolicyd, and replacing it with an entire policy. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here.  This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
+
+Open up the Containerfile, and delete this line:
+Delete this:
+....
+RUN systemctl enable fapolicyd
+....
+
+And then add the following in its place
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -56,7 +61,7 @@ After it completes, push the new image.
 podman push registry-{guid}.{domain}/base
 ----
 
-Now, on our vm, we can update, and apply the new image. 
+Now, on our vm back over on the Security VM Session tab, we can update, and apply the new image. 
 
 [source,bash,role="execute",subs=attributes+]
 ----

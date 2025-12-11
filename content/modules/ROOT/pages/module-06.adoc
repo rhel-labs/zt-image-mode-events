@@ -39,7 +39,13 @@ Now, we can build a new disk image, and start our new VM.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo podman run --rm --privileged --security-opt label=type:unconfined_t   --volume ./config.toml:/config.toml   --volume /var/lib/containers/storage:/var/lib/containers/storage   --volume .:/output   registry.redhat.io/rhel10/bootc-image-builder:10.1   --type qcow2   registry-xxt88.apps.ocpvdev01.rhdp.net/base
+sudo podman run --rm --privileged --security-opt label=type:unconfined_t \
+  --volume ./config.toml:/config.toml \
+  --volume /var/lib/containers/storage:/var/lib/containers/storage \
+  --volume .:/output \
+  registry.redhat.io/rhel10/bootc-image-builder:10.1 \
+  --type qcow2 \
+  registry-{guid}.{domain}/base
 ----
 
 Now let's copy that disk image to the proper location.  
@@ -62,7 +68,13 @@ virt-install --name security-vm \
   --noreboot
 ----
 
-After that completes, you will find the new system in the Security VM tab.
+After that completes, you will need to start up securty-vm, and then you will find the new system in the Security VM tab.
+
+[source,bash,role="execute",subs=attributes+]
+----
+virsh start security-vm
+----
+
 
 ## Testing FAPolicyd
 Our goal here was to deploy fapolicyd, so now that we have, let's see if its working. 
