@@ -14,7 +14,7 @@ To help save time, they wanted to repurpose a few other image mode machines inst
 When they switched the running machine, the application wouldn't start.
 They only had a RHEL 9.6 host to test, and they weren't sure if moving to RHEL 10.1 was part of the problem.
 
-Change to th git repository for the application with the bootc Containerfile, cloned onto the build host.
+Change to the application git repository with the bootc Containerfile, cloned onto the build host.
 [source,bash,role="execute",subs=attributes+]
 ----
 cd ~/bootc-version
@@ -92,7 +92,6 @@ We'll use it to change into the testing image we just pushed to the registry.
 ----
 sudo bootc switch registry-{guid}.{domain}/app-test
 ----
-NOTE: You may see warnings about Non-ASCII characters, this is a side effect of moving a RHEL 9 host to RHEL 10, and doesn't affect the host.
 
 From an output perspective, a switch looks the same as an update. There's a new deployment that's been staged and prepared for the next boot, but the image reference is completely different.
 
@@ -101,13 +100,17 @@ From an output perspective, a switch looks the same as an update. There's a new 
 sudo bootc status
 ----
 ....
-  Staged image: registry-bcsvm.apps.ocpvdev01.rhdp.net/app-test
-        Digest: sha256:7bf214162491f10288150824d14cafbd7da62336255c9f043ffd1ebeec1ad3d2
-       Version: 10.1 (2025-11-17 16:03:11.935540475 UTC)
+  Staged image: registry-89nsj.apps.ocpvdev01.rhdp.net/app-test
+        Digest: sha256:b2c3d8c7327d13087324c5a60f70b79e9b3e415cba32920895c76d688c9c8629 (amd64)
+       Version: 10.1 (2025-12-11T06:11:35Z)
 
-● Booted image: quay.io/mmicene/im-day2-tgt:9.6
-        Digest: sha256:b8b171136d276dc943a27fcdc6b90876538fffef502622109e1451492a9c7de7
-       Version: 9.6 (2025-09-08 18:56:51.120175635 UTC)
+● Booted image: registry-89nsj.apps.ocpvdev01.rhdp.net/base
+        Digest: sha256:ec5f5f46fd530ea8b4e393b276ab3d09dfce9012df8999073321369cc4659b8e (amd64)
+       Version: 10.1 (2025-12-11T06:11:35Z)
+
+  Rollback image: registry-89nsj.apps.ocpvdev01.rhdp.net/base
+          Digest: sha256:8e1eaea2f90fcdce6853392b47721037857fd6310b8f801ac3527b14df3c7c8d (amd64)
+         Version: 10.1 (2025-12-11T06:11:35Z)
 ....
 
 Issue a full reboot to finalize the switch, making sure you're on the right host.
@@ -142,15 +145,19 @@ Nov 17 16:18:10 imrhel nginx[1078]: nginx: configuration file /etc/nginx/nginx.c
 
 Looks the culprit is nginx missing its `/var` file structure but why does that not happen when the developers provision a new machine?
 
+==== Local machine state vs central image state
 In an image mode system, `bootc` handles the following directories differently, which is what allows for the seamless update and rollback experience. 
 
   * `/usr` -> image state, contents of the image will be extracted and overwrite local files
   * `/etc` -> local configuration state, contents of the image are merged with a preference for local files
   * `/var` -> local state, contents of the image will be ignored after the initial installation of any image
 
-At install, initial nginx logs and workfing files created during the build went in `/var` which means after it was unpacked from the original image, `bootc` treated it as local machine state. 
+Initial nginx logs and workfing files created during the build in `/var` are created as part of an *install* deployment.
+During a `switch` or `upgrade`, this is now *local state* meaning `bootc` won't deploy those changes to a running system.
 So the directories created by the RPM aren't created on the running host, which explains why a fresh install launches the app but a switch fails. 
 This is one of the new mental models that needs to be adopted to handle image mode operations. 
+This is also why user home directories are symlinked from the typical `/home` to `/var/home`, ensuring that new updates aren't overwriting user data.
+Generally, anything that needs to be permanent on the host should live in `/var` and options like symlinks are available to account for existing application behavior.
 
 If `/var` is hands-off after initial provisioning, how can you account for common directories that need to be present in `/var` on all systems?
 By using `systemd tmpfiles` to manage them at boot.
@@ -189,7 +196,7 @@ TIP: Another option would be to rollback the target host and reuse the same defa
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman build --file Containerfile --tag registry-{guid}.{domain}/app-test:v2
+podman build --file Containerfile --tag registry-{guid}.{domain}/app-test
 ----
 Note the linter isn't complaining about `nginx` in `/var` any more.
 ....
@@ -204,15 +211,25 @@ And of course push it to the local registry:
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman push registry-{guid}.{domain}/app-test:v2
+podman push registry-{guid}.{domain}/app-test
 ----
 
 === Test the Workaround
 _Switch to the tab labeled "Ops SSH session"_
 
-If we were to try to use switch again, `bootc` would let us know that the image was already the one it use so there's no change to be made.
-Instead we'd use `update` since we used the same image.
+If we were to try to use switch again, `bootc` would let us know that the image was the same so there's nothing to switch over.
+Instead we'd need to use `update` to pull in any changes to the same image.
 
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc switch registry-{guid}.{domain}/app-test
+----
+....
+Image specification is unchanged.
+....
+How can we test the problem with switching and `/var`?
+
+=== Native roll back capabilities.
 However, there's another way we can turn back time with image mode hosts: `bootc rollback`.
 This option will swap the currently booted deployment with the most recent one, kept on disk.
 You will see this deployment listed in `bootc status`.
@@ -223,7 +240,7 @@ You will see this deployment listed in `bootc status`.
 sudo bootc status
 ----
 ....
-● Booted image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
+● Booted image: registry-mjghb.apps.ocpvdev01.rhdp.net/app-test
         Digest: sha256:10eb5e2ebba0e549deb43315786731ff976d544f6f682c4cf30de0f4c371a059 (amd64)
        Version: 10.1 (2025-11-13T17:17:56Z)
 
@@ -233,8 +250,9 @@ sudo bootc status
 ....
 
 Rolling back a `bootc` deployment just tells the bootloader to boot the previous deployment.
-This means the `/etc` files will revert to their state from that previous deployment and we'll discard any changes made here.
-No changes would be made to `/var` in a rollback, but we will pick up the changes in our workaround to create the new directories. 
+Reversing the logic from our filesystem discussion, swapping the deployment for an earlier one on disk means that `/etc` and `/usr` will revert to that point in time but not `/var`.
+This will put the system in the same state as we started the exercise.
+
 Use the `--apply` flag along with `rollback` to immediately switch back to the previous deployment.
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -243,10 +261,26 @@ sudo bootc rollback --apply
 
 After a short while, you can log back in to the virtual machine by clicking `reconnect` or using the refresh button in the tab.
 
-Let's use the `--apply` flag and immediately execute the reboot instead of checking the status first.
+Looking at `bootc status`, we can see the booted image is now the `base` image and the app-test image is now the new rollback. 
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo bootc switch registry-{guid}.{domain}/app-test:v2 --apply
+sudo bootc status
+----
+....
+● Booted image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
+        Digest: sha256:10eb5e2ebba0e549deb43315786731ff976d544f6f682c4cf30de0f4c371a059 (amd64)
+       Version: 10.1 (2025-11-13T17:17:56Z)
+
+  Rollback image: registry-mjghb.apps.ocpvdev01.rhdp.net/app-test
+          Digest: sha256:d83d9f48a16e98c2d8ca2240f99ce0e2d2ffc5bc948d0434bff1810d2b58e6d5 (amd64)
+         Version: 10.1 (2025-11-13T17:30:16Z)
+....
+
+We can now re-run the `switch` to test the tmpfiles creation.
+Let's use the `--apply` flag here as well and immediately execute the reboot instead of checking the status first.
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc switch registry-{guid}.{domain}/app-test --apply
 ----
 
 After a short while, you can log back in to the virtual machine by clicking `reconnect` or using the refresh button in the tab.
@@ -272,9 +306,7 @@ The host details page is up and running on the test host. With that solved, we c
 
 
 == Core principles
-Easy updates, rollbacks, and image switching are part of the core improvements to the operation of image mode systems. 
+Recovering from issues with installed software without resorting to an expensive recovery process is a key benefit of the image mode operating model.
+Changing the deployed system software with a single command to easily reuse capacity makes testing faster and cheaper than the typical need to deploy a new stack.
 Knowing how changes to the filesystem are managed by `bootc` is important to navigating the differences between image mode and package mode.
 
-Layering is an important part of the design of standard builds and can have some downstream effects as well. 
-Just like stacking configuration management, thinking through the idea of layered builds can be powerful.
-In the next exercises, we'll dig deeper into derived builds for the application.

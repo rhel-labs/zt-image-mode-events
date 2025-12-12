@@ -9,8 +9,8 @@ In this lab we'll explore this as we expand on the idea of standardized builds a
 [#write-containerfiles]
 == Updating the base 
 
-A sharp eyed junior noticed that console arguments we passed had a redundant definition.
-On the build host, let's update the config file and remove the duplicate entry.
+A sharp eyed junior noticed that one of the console arguments we passed is already applied by `bootc-image-builder`.
+On the build host, let's update the config file and remove the duplicate `tty0` entry.
 
 [source,bash,role="execute",subs=attributes+]
 ----

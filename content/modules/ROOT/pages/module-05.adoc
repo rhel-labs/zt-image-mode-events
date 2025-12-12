@@ -31,11 +31,16 @@ We briefly mentioned that responsibility for `/etc` is split between the image a
 This allows for centralizing common configs in our builds, while allowing for runtime flexibility.
 Most of the image controlled system software is in `/usr` making it a good location for things we absolutely want controlled via the image only.
 
-First, let's set up a directory structure that mimics `/etc` and `/usr` and  move the files we created inside. 
-This allows us to add all the configs at once with a single command and in a single layer of the image.
+Based in plaintext definition, image mode builds lend themselves to 'Infrastructure as Code' and 'GitOps' style practices.
+For example, creating a single version controlled repository to hold all of the build and configuration information for a single target image keeps everything centralized and maintainable.
+Package mode builds tend to have multiple different build artifacts spread across different tools, kickstart files, ansible playbooks and templates, version controlled config files, which can make this sort of IaC repo a little more challenging.
 
-NOTE: These are local, relative to the location of the Containerfile, not the build system.
+Let's use that mindset and set up a directory structure that mimics `/etc` and `/usr` to hold the specific configurations that will apply to the hosts created from this image.
+This allows us to add all the configs at once with a single COPY command and in a single layer of the image.
 
+NOTE: These are local, relative to the location of the Containerfile, not the build host filesystem. Remenber we're thinking about this as a git repository.
+
+==== Create the structure
 [source,bash,role="execute",subs=attributes+]
 ----
 mkdir -p etc/sudoers.d
@@ -49,13 +54,18 @@ mkdir -p etc/ostree
 mkdir -p usr/lib/bootc/kargs.d
 ----
 
+==== Organize our configs
 [source,bash,role="execute",subs=attributes+]
 ----
 mv 10-wheel etc/sudoers.d
 ----
 [source,bash,role="execute",subs=attributes+]
 ----
-mv console_kargs.conf usr/lib/bootc/kargs.d/05-cloud-kargs.toml
+mv console_kargs.toml usr/lib/bootc/kargs.d/05-cloud-kargs.toml
+----
+[source,bash,role="execute",subs=attributes+]
+----
+mv auth.json etc/ostree/
 ----
 
 Inspect the directories and files we just organized. 
@@ -64,21 +74,21 @@ Inspect the directories and files we just organized.
 tree $(pwd)/{etc,usr}
 ----
 ....
-etc
+/root/etc
 ├── ostree
+│   └── auth.json
 └── sudoers.d
     └── 10-wheel
-usr
+/root/usr
 └── lib
     └── bootc
         └── kargs.d
             └── 05-cloud-kargs.toml
 
-7 directories, 2 files
+7 directories, 3 files
 ....
 
 We'll take a page from application container design and use the `COPY` directive to manage our central configs as if they were directories on the end host.
-The configs we have created so far will move into those directories, reducing the number of commands and therefor the number of layers created by the build.
 Each directive in the Containerfile adds a new layer to the resulting image.
 Understanding layering will help design images that make the most efficient use of the local build cache and network updates.
 
@@ -129,107 +139,10 @@ This will compare the image in the registry with what's on the host.
 sudo bootc upgrade --check
 ----
 ....
-error: Upgrading: Preparing import: Fetching manifest: failed to invoke method OpenImage: reading manifest latest in registry-z7ddq.apps.ocpvdev01.rhdp.net/base: authentication required.
-....
-
-Registry authentication error? Didn't we just apply an update from the registry?
-Check on the `auth.json` file to see what happened.
-
-[source,bash,role="execute",subs=attributes+]
-----
-file /etc/ostree/auth.json
-----
-....
-/etc/ostree/auth.json: cannot open `/etc/ostree/auth.json' (No such file or directory)
-....
-
-Something happened in our new image, check the status to see if we have a rollback available.
-[source,bash,role="execute",subs=attributes+]
-----
-sudo bootc status
-----
-....
-● Booted image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
-        Digest: sha256:10eb5e2ebba0e549deb43315786731ff976d544f6f682c4cf30de0f4c371a059 (amd64)
-       Version: 10.1 (2025-11-13T17:17:56Z)
-
-  Rollback image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
-          Digest: sha256:d83d9f48a16e98c2d8ca2240f99ce0e2d2ffc5bc948d0434bff1810d2b58e6d5 (amd64)
-         Version: 10.1 (2025-11-13T17:30:16Z)
-....
-
-Rolling back a `bootc` deployment just tells the bootloader to boot the previous deployment.
-This means the `/etc` files will revert to their state from that previous deployment and we'll discard any changes made here.
-This is also one of the reasons you may want to manage the update timer via the image instead of locally via `/etc`. 
-Use the `--apply` flag along with `rollback` to immediately switch back to the previous deployment.
-[source,bash,role="execute",subs=attributes+]
-----
-sudo bootc rollback --apply
-----
-
-
-While the VM reboots, swith cack to _Build host_ tab to see what happened.
-
-We should have moved the `auth.json` into our new local directories when we reorganized the config files.
-Check that first.
-[source,bash,role="execute",subs=attributes+]
-----
-ll etc/ostree/
-----
-....
-total 0
-....
-
-Ok, so that's odd.
-Did we miss that file?
-[source,bash,role="execute",subs=attributes+]
-----
-ls -al auth.json
-----
-....
--rw-------. 1 root root 98 Dec  9 20:02 auth.json
-....
-
-It looks like it got skipped, so move it into the right local path for the new `COPY` instruction.
-[source,bash,role="execute",subs=attributes+]
-----
- mv auth.json etc/ostree/
-----
-
-Since this is a file we added to the existing structure, there's no need to update the Containerfile to rebuild.
-This is one of the advantages of having this style of config directory structure, any changes made on the filesystem will be reflected on the host without the need to update the Containerfile.
-[source,bash,role="execute",subs=attributes+]
-----
-podman build --file Containerfile --tag registry-{guid}.{domain}/base
-----
-
-Notice the `COPY` step for `/etc` picked up the change.
-
-We can push the updated image to the registry.
-[source,bash,role="execute",subs=attributes+]
-----
-podman push registry-{guid}.{domain}/base
-----
-
-_Switch to the VM tab and hit `reconnect` or the refresh button in the tab title_
-
-With the previous deployment booted, we should have the `auth.json` where we expect and can update the host.
-[source,bash,role="execute",subs=attributes+]
-----
-sudo bootc update --apply
-----
-
-Log back in and check to make sure the latest update includes our authentication fix.
-[source,bash,role="execute",subs=attributes+]
-----
-sudo bootc update --check
-----
-....
 No changes in: docker://registry-mjghb.apps.ocpvdev01.rhdp.net/base
 ....
 
 == Core principles
 In this exercise we focused on making some idomatic changes to the Containerfile and exploring how image mode hosts handle files. 
-We also saw how the built-in rollback capability can save time and effort to restore known good previous states without resorting to backups or other tools.
-
+We looked at how the build files may differ from the collection of automation and files for a package mode host.
 We've satisfied the basic needs of the operations team, in the next section we'll tackle the security requiments and dig deeper into some of these topics.

@@ -126,7 +126,7 @@ We now have replaced the original image in the registry we used to create the vi
 
 [#update-vm]
 == Updating the virtual machine
-_Return to the tab labeled "Intial VM" to proceed with the update_ 
+_Return to the tab labeled "Ops SSH session" to proceed with the update_ 
 
 By default, image mode hosts ship with a timer that checks for and applies available updates.
 [source,bash,role="execute",subs=attributes+]
@@ -152,6 +152,7 @@ sudo bootc update
 error: Upgrading: Preparing import: Fetching manifest: failed to invoke method OpenImage: reading manifest latest in registry-mjghb.apps.ocpvdev01.rhdp.net/base: authentication required
 ....
 
+==== Immutable vs mutable directories
 Since we created this VM before we added the credentials to the image, we need to create them manually.
 One of the important details of image mode operations is how host filesystems are treated.
 The `/etc` directory can be updated either via the image or via the running host.
