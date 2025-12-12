@@ -4,84 +4,46 @@ There are times that you want to create your own bases from scratch instead of r
 
 [#write-containerfiles]
 == Building from scratch
+_Return to the "Build host" and change to a new directory for this exercise_
+[source,bash,role="execute",subs=attributes+]
+----
+cd ~/scratch
+----
 
-Just like any other container image, bootc images can start from an empty filesystem. 
-We use the Red Hat base as the builder, since the tools needed to create a rootfs that bootc can use are build into bootc.
+Just like any other container image, bootc images can start from an empty filesystem called a "scratch image". 
+Some use cases may find this provides more control and a smaller end image.
+
+To create an image from scratch, use the Red Hat base as the builder, since the tools needed to create a rootfs that bootc can use are built into `bootc`.
+This is a multi-stage build that takes the components created by the `bootc` tooling as the starting point for the `scratch` image.
 
 Let's explore how that can work by creating a new Containerfile with the following contents.
+
+We provide a minimal manifest that has even fewer packages selected. 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano Containerfile.std
+nano Containerfile.scratch
 ----
 
-scratch build with standard packages and configs
-[source,dockerfile,role="execute",subs=attributes+]
-----
-# Begin with a standard bootc base image that serves as a "builder" for our custom image.
-FROM registry.redhat.io/rhel10/rhel-bootc:10.1 AS builder
-# Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
-# If no repositories are defined, the default build will be used. You can modify the scope of packages in the base image by changing the manifest between the "standard" and "minimal" sets.
-RUN /usr/libexec/bootc-base-imagectl build-rootfs --manifest=standard /target-rootfs
-
-# Create a new, empty image from scratch.
-FROM scratch
-# Copy the root file system built in the previous step into this image.
-COPY --from=builder /target-rootfs/ /
-
-# Apply customizations to the image.
-RUN <<EORUN
-set -xeuo pipefail
-# Install necessary packages, run scripts, etc.
-dnf -y install NetworkManager openssh-server
-# Remove leftover build artifacts from installing packages in the final built image.
-dnf clean all
-rm /var/{log,cache,lib}/* -rf
-EORUN
-
-# Define required labels for this bootc image to be recognized as such.
-LABEL containers.bootc 1
-LABEL ostree.bootable 1
-
-# Optional labels that only apply when running this image as a container. These keep the default entry point running under systemd.
-STOPSIGNAL SIGRTMIN+3
-CMD ["/sbin/init"]
-
-# Run the bootc linter to avoid encountering certain bugs and maintain content quality. Place this command last in your Containerfile.
-RUN bootc container lint
-----
-
-[source,bash,role="execute",subs=attributes+]
-----
-podman build -t scratch:std -f Containerfile.std --cap-add=all --security-opt=label=type:container_runtime_t --device /dev/fuse
-----
-
-You can see that seemingly simple builder image does a huge amount of work setting up the base filesystem.
-It also installed 400+ packages, since this is the specification for the standard base image RHT ships.
-We also provide a minimal manifest that has even fewer packages selected. 
-[source,bash,role="execute",subs=attributes+]
-----
-nano Containerfile.mini
-----
-
+Copy the following Containerfile and save it.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Begin with a standard bootc base image that is reused as a "builder" for the custom image.
 FROM registry.redhat.io/rhel10/rhel-bootc:10.1 AS builder
 # Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
-RUN /usr/libexec/bootc-base-imagectl build-rootfs --manifest=minimal /target-rootfs
+RUN /usr/libexec/bootc-base-imagectl build-rootfs --manifest=minimal /target-rootfs <.>
 
 # Create a new, empty image from scratch.
-FROM scratch
-COPY --from=builder /target-rootfs/ /
+FROM scratch <.>
+COPY --from=builder /target-rootfs/ / <.>
 
-RUN <<EORUN
+RUN <<EORUN <.>
 set -xeuo pipefail
 dnf -y install NetworkManager openssh-server
 dnf clean all
 rm /var/{log,cache,lib}/* -rf
 EORUN
 
-# Define required labels for this bootc image to be recognized as such.
+# Define required labels for this bootc image to be recognized as such. <.>
 LABEL containers.bootc 1
 LABEL ostree.bootable 1
 
@@ -90,10 +52,84 @@ CMD ["/sbin/init"]
 
 RUN bootc container lint
 ----
+<.> `bootc` creates the image based on the specified manifest
+<.> The special FROM statement that creates an empty image
+<.> Moving the filesystem created in the builder image to the empty target
+<.> Local customizations to the minimal image created as a single layer using a `heredoc`
+<.> Housekeeping to appropriately identitfy this as a `bootc` image to container tools
+
+The definitions of base images are part of the https://gitlab.com/fedora/bootc/base-images[upstream project,window=_blank].
+These manifests not only define the starting set of packages installed, but also system configuration for image mode support.
+
+Similar to `bootc-image-builder`, to build a `scratch` image with `podman` we need to add additional capabilities and devices to the build, even as root.
+[source,bash,role="execute",subs=attributes+]
+----
+podman build -t minimal -f Containerfile.scratch --cap-add=all --security-opt=label=type:container_runtime_t --device /dev/fuse
+----
+
+You can see that seemingly simple builder image does a huge amount of work setting up the base filesystem.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman build -t scratch:mini -f Containerfile.mini --cap-add=all --security-opt=label=type:container_runtime_t --device /dev/fuse
+podman images minimal registry.redhat.io/rhel10/rhel-bootc:10.1 
 ----
-The manifests are part of the base image definitions[https://gitlab.com/fedora/bootc/base-images/-/tree/main?ref_type=heads,window=_blank]
+....
+....
 
+You can see there's a significant size difference as the _minimal_ manifest only installed about 200 packages.
+The standard RHEL base is about 400.
+
+To see how these compare when put to actual use, let's build two new images from the same Containerfile using each base image.
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile.std
+----
+
+For simplicity, we'll create a basic webserver image.
+[source,dockerfile,role="execute",subs=attributes+]
+----
+# Begin with a standard bootc base image 
+FROM registry.redhat.io/rhel10/rhel-bootc:10.1 
+RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
+
+RUN dnf install -y httpd
+RUN systemctl enable httpd
+RUN bootc container lint
+----
+[source,bash,role="execute",subs=attributes+]
+----
+podman build -t httpd:base -f Containerfile.std
+----
+
+Now do the same for the freshly built from scratch image.
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile.min
+----
+
+For simplicity, we'll create a basic webserver image.
+[source,dockerfile,role="execute",subs=attributes+]
+----
+# Begin with a standard bootc base image 
+FROM minimal
+RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
+
+RUN dnf install -y httpd
+RUN systemctl enable httpd
+RUN bootc container lint
+----
+[source,bash,role="execute",subs=attributes+]
+----
+podman build -t httpd:min -f Containerfile.min
+----
+
+Compare the sizes of our two httpd images
+[source,bash,role="execute",subs=attributes+]
+----
+podman images httpd:base httpd:min
+----
+....
+....
+
+Notice that we've saved some space.

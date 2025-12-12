@@ -11,7 +11,7 @@ echo "10.0.2.2 imrhel.${GUID}.${DOMAIN}" >> /etc/hosts
 # Command line created by system-reinstall-bootc 
 # Pulls the 9.6 basics image from quay to use as the baseline host in the lab
 #
-podman run --privileged --pid=host --user=root:root -v /var/lib/containers:/var/lib/containers -v /dev:/dev --security-opt label=type:unconfined_t -v /:/target quay.io/mmicene/im-day2-tgt:9.6 bootc install to-existing-root --acknowledge-destructive --root-ssh-authorized-keys /target/home/rhel/.ssh/authorized_keys
+podman run --privileged --pid=host --user=root:root -v /var/lib/containers:/var/lib/containers -v /dev:/dev --security-opt label=type:unconfined_t -v /:/target quay.io/mmicene/im-day2-tgt:10.1 bootc install to-existing-root --acknowledge-destructive --root-ssh-authorized-keys /target/home/rhel/.ssh/authorized_keys
 
 # With the new deployment created, we can copy directly into the /etc directory to make updates we want in the running bootc target
 # The deployment checksum and resulting directory will change on each provision, this is how we detect the location

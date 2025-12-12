@@ -10,3 +10,11 @@ podman run --rm --privileged -v /var/lib/containers:/var/lib/containers registry
 registry-{guid}.{domain}/base \
 registry-{guid}.{domain}/base:rechunked
 
+Examine the two for size
+
+podman images base base:rechunked
+
+Use the reinstalled target as "clean" 
+time bootc switch base
+bootc rollback
+time bootc switch base:rechunked

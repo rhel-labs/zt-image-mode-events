@@ -138,3 +138,4 @@ if [ -d $TMPDIR/${EXAMPLE} ]; then
 fi
 rm -rf $TMPDIR
 
+mkdir ~/scratch
