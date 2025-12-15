@@ -6,35 +6,23 @@ a virtual machine from it. `qcow2` is a standard file format used by the Linux v
 [#config]
 == Create the config for building the virtual machine image
 
-To deploy our bootc image as a host, we need to get the contents of the image onto a disk. While `bootc` 
-handles those mechanics, the actual creation of a physical disk, virtual disk, or cloud image are handled 
-by other standard tools. For example, Anaconda can be used with bootc images for physical or virtual hosts 
-like you would today. 
+To deploy our bootc image as a host, we need to get the contents of the image onto a disk. While `bootc` handles those mechanics, the actual creation of a physical disk, virtual disk, or cloud image are handled by other standard tools.
+For example, Anaconda can be used with bootc images for physical or virtual hosts like you would today. 
 
 In this lab, we'll use the `bootc-image-builder` tool which can create various different disk image types and call `bootc` to deploy the image contents. This is a variant of the Image Builder tooling you are already familiar with, just containerized and with `bootc` built in.
 
-You may have noticed the bootc image we've created does not include any login credentials. Not a 
-typical concern for an application container, but as a host we will very likely need to interact
-at some point. Since we are defining an image to be shared by multiple hosts in multiple different environments,
-users and authentication is likely to be handled at the deployment stage, not the build stage.
+You may have noticed the bootc image we've created does not include any login credentials. 
+Not a typical concern for an application container, but as a host we will very likely need to interact with it at some point. 
+Since we are defining an image to be shared by multiple hosts in multiple different environments, users and authentication is most likely to be handled at the *deployment* stage, not the build stage.
 
 TIP: There are cases where it may be useful for a user and credentials to be added to an image, 
 as a 'break glass' emergency login for example.
 
 To add a user during the deployment to a disk image, the credentials are put into the config file used by `bootc-image-builder` to create the final disk image.
 
-An ssh key pair was generated for use during this lab, you can view the public part like this for later use. There's no newline at the end of this file, so the `echo` is just to make copying the output easier.
-[source,bash,role="execute",subs=attributes+]
-----
-cat ~/.ssh/{guid}key.pub; echo
-----
-....
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAuXnpoluye+KM+9tvIAdHf+F0IHh+K73tlcjEG8LJRB
-....
-NOTE: This is only a sample and this public key will not work in your environment
+You can now create a file called `config.toml` with the following contents to create a user with the specified values.
 
-You can now create a file called `config-qcow2.toml` with the following contents, replacing "SSHKEY" 
-in the `key` field with the contents of public key from your system.
+You'll be replacing "SSHKEY" placeholder in the `key` field with the contents of public key from your system in the next step.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -52,12 +40,26 @@ key = "SSHKEY"
 
 This configuration blueprint creates a user in the wheel group with the login `core`, the password `redhat` and the ssh key of the user on the lab host.
 
+Save the file and return to the terminal to get the ssh key.
+An ssh key pair was generated for use during this lab, you can copy the key and edit the `config.toml` to replace the `SSHKEY` with the actual key.
+_There's no newline at the end of this file, so the `echo` is just to make copying the output easier._
+
+[source,bash,role="execute",subs=attributes+]
+----
+cat ~/.ssh/{guid}key.pub; echo
+----
+....
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAuXnpoluye+KM+9tvIAdHf+F0IHh+K73tlcjEG8LJRB
+....
+NOTE: This is only a sample and this public key will not work in your environment
+
 [#create]
 == Create the disk image
 
 To create a bootable disk image from an OCI image, we have a special version of image builder that has support for `bootc`. This `bootc-image-builder` itself runs as a container, and as a result needs additional capabilities and to be run as `root`. 
 
-As `bootc-image-builder` accesses local storage to find the source image, we will need to copy our image from user storage to system storage. The `podman image scp` command can do this for us, as well as copying to various different targets. When executed with a source but without a destination as below, the default is local system storage.
+As `bootc-image-builder` accesses local storage to find the source image, we need our image in system storage. 
+If we'd built as a non-root user, the `podman image scp` command can do this for us, as well as copying to various different targets.
 
 
 Try to generate the image now:
@@ -66,7 +68,7 @@ NOTE: This could take 2+ minutes to complete.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo podman run --rm --privileged --security-opt label=type:unconfined_t \
+podman run --rm --privileged --security-opt label=type:unconfined_t \
   --volume ./config.toml:/config.toml \
   --volume /var/lib/containers/storage:/var/lib/containers/storage \
   --volume .:/output \
@@ -110,8 +112,7 @@ The creation of KVM virtual machines is out of scope for this lab, but the core 
 
 [source,bash,role="execute",subs=attributes+]
 ----
-virt-install --connect qemu:///system \
-  --name bootc-vm \
+virt-install --name bootc-vm \
   --disk /var/lib/libvirt/images/bootc-vm.qcow2 \
   --import \
   --memory 4096 \
@@ -125,40 +126,69 @@ We can now start our new bootc virtual machine.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-virsh --connect qemu:///system start bootc-vm
+virsh start bootc-vm
 ----
 
-Check to make sure the virtual machine running:
-
-[source,bash,role="execute",subs=attributes+]
-----
-virsh --connect qemu:///system list
-----
-....
- Id   Name                State
-------------------------------------
- 1    bootc-vm                running
-....
+== Switch to the image mode VM
+NOTE: The terminal pages for the KVM guests have a script that will wait for SSH to become available before trying to log in. If there's a problem with an SSH connection, you can restart the connection using the refresh button in the tab.
 
 [#test]
 == Test and login to the virtual machine
+_Click on the tab labeled "Ops SSH session"_ 
 
+Once the script detects SSH is running, you should be automatically logged in as the `core` user created in the `bootc-image-builder` customization. 
+....
+[core@localhost ~]$
+....
+
+Let's test one of the packages installed from `EPEL` during the build process.
 [source,bash,role="execute",subs=attributes+]
 ----
 btop
 ----
+TIP: You can hit `q` to exit `btop`
+
+Image mode hosts introduce a new way of understanding what's running on a host. 
+The new `bootc` command is at the heart of operations on image mode hosts.
+Let's familiarize ourselves with the `status` options first.
+
+This status provides information about the images on the host. There are 3 different images that may be available on a bootc host: the booted image, the staged image, and the rollback image. We'll discuss the latter two images later in the lab. The booted image is what's currently defined as the active environment. The image name here is what `bootc` tracks to detect any updates that come available. 
+
+TIP: The user password was also defined in the `config.toml` as *redhat*
 
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status
 ----
 ....
- Booted image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
-        Digest: sha256:b937c4633ae298d3c68d97810b1b6dc276e8d47f8aea0a6ba85eff540b966539 (amd64)
-       Version: 10.1 (2025-11-13T16:56:36Z)
+Booted image: registry-pw6dg.apps.ocpvdev01.rhdp.net/base
+        Digest: sha256:3d0fab2f019f5b641ccf3e41853f2e3b720a96aaa7a3d786548a47b3f098cc02 (amd64)
+       Version: 10.1 (2025-11-19T17:11:53Z)
 ....
-<1> This section details the name of the image, the version with creation timestamp, and the SHA256 digest from the registry. This digest should match the previous output from `skopeo`. 
 
+First, `bootc` tells you directly if it's being run on an image mode host or not. If `bootc` were to be installed and run on a non-bootc host, `bootc status` will show all `null` values instead of the output seen here. 
+The core information shows is the image in use, the digest, and some version information.
+
+More information is available with the `--verbose` flag.
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc status --verbose
+----
+....
+Booted image: registry-pw6dg.apps.ocpvdev01.rhdp.net/base
+        Digest: sha256:3d0fab2f019f5b641ccf3e41853f2e3b720a96aaa7a3d786548a47b3f098cc02 (amd64)
+       Version: 10.1 (2025-11-19T17:11:53Z)
+     StateRoot: default
+ Deploy serial: 0
+        Staged: no
+        Commit: 564872a699359b7988e63851bc24b60da83072c0c150849c4ecd8f606c0aa487
+   Soft-reboot: yes
+....
+You can see the details of image in use, but also some `bootc` internals that show operational information about the booted image.
+
+Status doesn't stop there.
+Full internal information about the images can be found by using the `--format` tag to ask for additional detail in YAML or JSON.
+This can be useful for troubleshooting or for using this information in other tools.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status --format yaml
@@ -170,7 +200,7 @@ metadata:
   name: host
 spec:
   image:
-    image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
+    image: registry-q4j7p.apps.ocpvdev01.rhdp.net/base
     transport: registry
   bootOrder: default
 status:
@@ -178,11 +208,11 @@ status:
   booted:
     image:
       image:
-        image: registry-mjghb.apps.ocpvdev01.rhdp.net/base
+        image: registry-q4j7p.apps.ocpvdev01.rhdp.net/base
         transport: registry
       version: '10.1'
-      timestamp: 2025-11-13T16:56:36.232037898Z
-      imageDigest: sha256:b937c4633ae298d3c68d97810b1b6dc276e8d47f8aea0a6ba85eff540b966539
+      timestamp: 2025-12-09T06:23:07Z
+      imageDigest: sha256:730892a19b22daca7be394ede0543979573334cfdffd43cb77a860852cf788fc
       architecture: amd64
     cachedUpdate: null
     incompatible: false
@@ -191,17 +221,15 @@ status:
     store: ostreeContainer
     ostree:
       stateroot: default
-      checksum: 7b67791e3f5f79e86d9d4f297cfbac57de6e96f67df46622047429bf60429b99
+      checksum: 7794ee898bcb76da5a18e5c0ffb18504f6e402aa1df7cde9dff50164dca78c1c
       deploySerial: 0
   rollback: null
   rollbackQueued: false
-  type: bootcHost
+  type: BootcHost
 ....
 
-This status provides information about the images on the host. There are 3 different images that may be available on a bootc host: the booted image, the staged image, and the rollback image. We'll discuss the latter two images later in the lab. The booted image is what's currently defined as the active environment. The image name here is what `bootc` tracks to detect any updates that come available. 
-
-
-First, `bootc` tells you directly if it's being run on an image mode host or not. If `bootc` were to be installed and run on a non-bootc host, `bootc status` will show all `null` values instead of the output seen here. 
+Not only do we get detailed information, it's categorized a little differently.
+You can see where fields from the `--verbose` flag line up against internal structures like image information versus ostree internals. 
 
 For other ways, we can look at how the system was started, let's look at kernel command line.
 
@@ -210,38 +238,32 @@ For other ways, we can look at how the system was started, let's look at kernel 
  cat /proc/cmdline
 ----
 ....
-BOOT_IMAGE=(hd0,gpt3)/boot/ostree/default-8229ec6e3d87cd7730bff98dd2a6aeedb8727371cd61de8783c3fe8234bd2797/vmlinuz-6.12.0-124.8.1.el10_1.x86_64 root=UUID=37979fd9-1866-466d-8795-4c8c7594031c rw boot=UUID=5613f646-1ab4-49cd-862b-c0636c26af6a rw console=tty0 console=ttyS0 ostree=/ostree/boot.1/default/8229ec6e3d87cd7730bff98dd2a6aeedb8727371cd61de8783c3fe8234bd2797/0
+BOOT_IMAGE=(hd0,gpt3)/boot/ostree/default-9cba41d43c6b3669ffb845fb0fc12443e5f9e5858364353132fb68999df2c85e/vmlinuz-6.12.0-124.20.1.el10_1.x86_64 root=UUID=e89f7d46-c45d-4c22-aebc-9e6a9d037171 rw boot=UUID=dec2cfec-b437-490a-bf10-34de519b96e6 rw console=tty0 console=ttyS0 ostree=/ostree/boot.1/default/9cba41d43c6b3669ffb845fb0fc12443e5f9e5858364353132fb68999df2c85e/0
 ....
 
 We can see in the kernel command line some clear ties to an `ostree` partition, which is how images are stored and managed on a bootc host. We'll talk more about that later.
 
 One other obvious difference for bootc hosts is the layout of the filesystem. 
+Let's ignore the dynamic `/run` directories.
 
 [source,bash,role="execute",subs=attributes+]
 ----
- df -Th
+df -Th | grep -v /run
 ----
 ....
 Filesystem     Type      Size  Used Avail Use% Mounted on
-composefs      overlay   7.6M  7.6M     0 100% /
+composefs      overlay   7.7M  7.7M     0 100% /
 /dev/vda4      xfs       8.5G  2.3G  6.3G  27% /etc
 devtmpfs       devtmpfs  1.9G     0  1.9G   0% /dev
 tmpfs          tmpfs     2.0G     0  2.0G   0% /dev/shm
-tmpfs          tmpfs     782M  608K  782M   1% /run
 tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
-tmpfs          tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
 /dev/vda3      xfs       960M  157M  804M  17% /boot
 /dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
-tmpfs          tmpfs     391M  4.0K  391M   1% /run/user/1000
-tmpfs          tmpfs     1.0M     0  1.0M   0% /run/credentials/getty@tty1.service
-tmpfs          tmpfs     1.0M     0  1.0M   0% /run/credentials/serial-getty@ttyS0.service
 ....
 
-Rather than the usual layout, you'll notice that our root filesystem is an overlay and `/sysroot` looks like where most of the storage is used. You can also check the output of `ls -l /` and notice that there are a lot of symlinks where you might expect directories or filesystems.  This is a key difference that is tied to how updates, rollbacks, and software management works on image mode hosts.  We'll explore this in a later exercise.
+Skipping the runtime system directories, rather than the usual layout, you'll notice that our root filesystem is an overlay and `/sysroot` looks like where most of the storage is used. 
+You can also check the output of `ls -l /` and notice that there are a lot of symlinks where you might expect directories or filesystems.  i
+This is a key difference that is tied to how updates, rollbacks, and software management works on image mode hosts.  We'll explore this in a later exercise.
 
-[source,bash,role="execute",subs=attributes+]
-----
-systemctl status rsyslog.service
-----
-Before proceeding, make sure you have changed back to the builder terminal.
+_Before proceeding, make sure you have changed back to the tab labeled "Build host'._
 

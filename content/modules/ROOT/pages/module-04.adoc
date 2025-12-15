@@ -5,10 +5,9 @@ In this lab, you will learn how to make configuration or software changes in ima
 [#update-container]
 == Changing the bootc image
 
-We've created our first system but there are a few things that might be missing we typically 
-do to our systems. Not requiring a password every time we use sudo might be something we allow 
-admins to do. We may also need to put notices on logins or present info in the MOTD. Let's make 
-some changes to how the system behaves. 
+We've created our first system but there are a few things that might be missing we typically do to our systems. 
+Not requiring a password every time we use sudo might be something we allow admins to do. 
+We may also need to put notices on logins or present info in the MOTD. Let's make some changes to how the system behaves. 
 
 
 RHEL supports drop-in directories for several services and applications, including 
@@ -27,36 +26,50 @@ nano 10-wheel
 
 Add the following and save the file
 
-[source,text,role="execute",subs=attributes+]
+[source,shell,role="execute",subs=attributes+]
 ----
 # Enable passwordless sudo for the wheel group
 %wheel        ALL=(ALL)       NOPASSWD: ALL
 ----
 
-For some cloud provider serial consoles we need to update the ttyS0 definition
+For some cloud provider serial consoles we need to update the console definition.
+Typically this is handled by passing kernel parameters to the boot entry.
+For image mode systems, `/boot` is read-only, so we have support for passing kernel paramaters via configuration files in `/usr/lib/bootc/kargs.d` as drop-ins.
+
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano console_kargs.conf
+nano console_kargs.toml
 ----
 
 Add the following and save the file
 
-[source,text,role="execute",subs=attributes+]
+[source,shell,role="execute",subs=attributes+]
 ----
 kargs = ["console=tty0", "console=ttyS0,115200n8"]
 ----
 
-Now that we have our new configs, we can add them to the Containerfile and rebuild the image.
+Now that we have our new configs, we can add them to the end of the Containerfile and rebuild the image.
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-
 # Add image controlled configs
 COPY 10-wheel /etc/sudoers.d/wheel
-COPY console_kargs.conf /usr/lib/bootc/kargs.d/05-cloud-kargs.toml
+COPY console_kargs.toml /usr/lib/bootc/kargs.d/05-cloud-kargs.toml
 ----
 
+Use the same command to build this updated image as the initial build.
+Since we added new steps to the end of the Containerfile, `podman` will reuse the previously built layers rather than rebuild the entire image.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -66,10 +79,8 @@ podman build --file Containerfile --tag registry-{guid}.{domain}/base
 [#distribute]
 == Distributing the bootc image
 
-Now that we have a full operating system in a standard OCI container image, we can use
-standard container registries to host and distribute our OS images. The only atypical thing so far 
-is what's in the base image. How we added software or files to the image is the same as any other 
-application container. The special sauce of `bootc` comes when a host is running.
+We used local storage to create our virtual machine image, but to update a running host we need a different way to make images available to running hosts.
+Now that we have a full operating system in a standard OCI container image, we can use standard container registries to host and distribute our OS images. 
 
 We have a registry available within the lab environment we can push our image to:
 
@@ -81,18 +92,26 @@ podman push registry-{guid}.{domain}/base
 Error: trying to reuse blob sha256:7c1862f54f1a8b765bb4f3c6763cfc512d00bfe4fa3246fbcf38c273489a9be1 at destination: checking whether a blob sha256:7c1862f54f1a8b765bb4f3c6763cfc512d00bfe4fa3246fbcf38c273489a9be1 exists in registry-mjghb.apps.ocpvdev01.rhdp.net/base: authentication required
 ....
 
-Authenticate and add to Containerfile
+It's common for enterprise registries to require some sort of authentication to push or pull images. 
+We can log in and cache credentials in our shell, but that won't work for the image mode hosts.
 
 [source,bash,role="execute",subs=attributes+]
 ----
 podman login -u core -p redhat registry-{guid}.{domain}
 ----
 
+To create system credentials, we'll reuse the user login, but typically some sort of service acccount would be used.
+In any case, the files are identeical, and can be published in the image. This will allow a newly created image mode host to update immediately after install.
+
+The credentials are on disk, but the `podman login` command can also generate a file for a single registry. 
+This can be useful as users may have personal credentials for a number of different registries and we don't want to accidentally include or leak these into different environments.
 [source,bash,role="execute",subs=attributes+]
 ----
 podman login -u core -p redhat registry-{guid}.{domain} --authfile=auth.json
 ----
 
+With the authfile created, we can add this to the Containerfile.
+Since we've made a change to our definition, we need to rebuld the image.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 COPY auth.json /etc/ostree/auth.json
@@ -102,6 +121,7 @@ COPY auth.json /etc/ostree/auth.json
 podman build --file Containerfile --tag registry-{guid}.{domain}/base
 ----
 
+Now we can push our updated image to the registry.
 [source,bash,role="execute",subs=attributes+]
 ----
 podman push registry-{guid}.{domain}/base
@@ -111,17 +131,26 @@ We now have replaced the original image in the registry we used to create the vi
 
 [#update-vm]
 == Updating the virtual machine
+_Return to the tab labeled "Ops SSH session" to proceed with the update_ 
+
+Switch back to the tab labeled Ops VM.
+
+By default, image mode hosts ship with a timer that checks for and applies available updates.
 [source,bash,role="execute",subs=attributes+]
 ----
-systemctl list-timers
+systemctl list-timers --no-pager
 ----
+
+The timer will fire some random interval after boot.
+This can be controlled via the Containerfile, we'll take a look at an example of this later.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-systemctl status bootc-fetch-apply-updates.timer
+systemctl status bootc-fetch-apply-updates.timer --no-pager
 ----
 
-(Reminder, the password for `sudo` is `redhat`)
+Rather than wait for the timer to fire, go ahead and run `bootc update` by hand.
+(Reminder, the password for `sudo` is `redhat` as set in the customization blueprint)
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update
@@ -129,16 +158,26 @@ sudo bootc update
 ....
 error: Upgrading: Preparing import: Fetching manifest: failed to invoke method OpenImage: reading manifest latest in registry-mjghb.apps.ocpvdev01.rhdp.net/base: authentication required
 ....
+
+==== Immutable vs mutable directories
+Since we created this VM before we added the credentials to the image, we need to create them manually.
+One of the important details of image mode operations is how host filesystems are treated.
+The `/etc` directory can be updated either via the image or via the running host.
+This allows for central control with local overrides.
+During an update, `bootc` will compare the incoming `/etc` to the host `/etc` to determine what changes to make.
+If there have been local updates, those will be preserved, otherwise the new file will be installed.
+We've written more about this https://developers.redhat.com/articles/2025/08/25/what-image-mode-3-way-merge['3 way merge' process,window=_blank] and the implications for image mode hosts.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo podman login -u core -p redhat registry-{guid}.{domain} --authfile=/etc/ostree/auth.json
 ----
 
-[source,dockerfile,role="execute",subs=attributes+]
+[source,bash,role="execute",subs=attributes+]
 ----
-ls /etc/ostree/auth.json
+file /etc/ostree/auth.json
 ----
 
+With the system credentials in place, try the update again.
 (Reminder, the password for `sudo` is `redhat`)
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -159,6 +198,7 @@ Total new layers: 72    Size: 1.1 GB
 Removed layers:   69    Size: 2.1 GB
 Added layers:     72    Size: 1.1 GB
 ....
+NOTE: At the time of writing, the first update of an image mode host may be larger than just the layers changed at build time. This is due to registry versus local storage when the disk image was created.
 
 Let's check the current status of the host.
 [source,bash,role="execute",subs=attributes+]
@@ -177,7 +217,9 @@ sudo bootc status
 
 Updates to bootc hosts are offline in nature, meaning the new image has been readied for deployment, but no other changes have been made to the running system. 
 
-The last step for the change to take is to reboot the virtual machine. Before doing so, please make sure you are logged in to the virtual machine and not the hypervisor, the prompt should look like `[{vm_user}@localhost ~]$`.
+The last step for the change to take is to reboot the virtual machine. 
+
+TIP: Before doing so, please make sure you are logged in to the virtual machine and not the hypervisor, the prompt should look like `[core@localhost ~]$`.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -186,13 +228,35 @@ sudo systemctl reboot
 
 [#testing]
 == Testing the changes
+Log back into the VM by hitting the `reconnect` button or the reload icon next to the tab title.
 
+Look for the kernel arguments we added via the `bootc` configuration path.
 [source,bash,role="execute",subs=attributes+]
 ----
 cat /proc/cmdline
 ----
 
+The status now shows a rollback image instead of a staged image. 
+We'll explore what that means in a later exercise.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status
 ----
+....
+● Booted image: registry-z7ddq.apps.ocpvdev01.rhdp.net/base
+        Digest: sha256:1c0eba400508b300c956eb0923ea79a7042b490118aa5765d5019b3b886492b3 (amd64)
+       Version: 10.1 (2025-12-09T06:23:07Z)
+
+  Rollback image: registry-z7ddq.apps.ocpvdev01.rhdp.net/base
+          Digest: sha256:6a4855ce98f73498f046223c12230e5f4e79385559dc9d28f46b727a8f867c27 (amd64)
+         Version: 10.1 (2025-12-09T06:23:07Z)
+....
+Notice there's a new "rollback" image listed and the "staged" image is gone.
+We'll explore the idea of rollbacks later, but there are only ever three images available on an image mode host: the last booted, the current, and the next to be active.
+
+== Core principles
+So far, you've built an initial image, created some centrally managed configurations to be present on all systems, and published an updated bootc image.
+These are the basic operations for all image mode hosts.
+Most of the considerations between typical package mode "gold images" and image mode operations comes down to distinction between how changes are made and distributed.
+One of the design changes we mentioned in support of the new image based operations is the read only nature of certain parts of the host filesystems.
+We'll explore that in the next exercise.
