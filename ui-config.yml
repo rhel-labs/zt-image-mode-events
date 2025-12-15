@@ -27,7 +27,6 @@ antora:
     - name: "module-08"
       label: "Adding Troubleshooting tools"
       solveButton: false
-      solveButton: false
     - name: "module-10"
       label: "Troubleshooting an image mode deployment"
       solveButton: false
