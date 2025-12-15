@@ -99,6 +99,8 @@ podman login -u core -p redhat registry-{guid}.{domain}
 To create system credentials, we'll reuse the user login, but typically some sort of service acccount would be used.
 In any case, the files are identeical, and can be published in the image. This will allow a newly created image mode host to update immediately after install.
 
+=== Distributing pull secrets
+
 The credentials are on disk, but in the user cache.
 The `podman login` command can also generate a file for a single registry. 
 This can be useful as users may have personal credentials for a number of different registries and we don't want to accidentally include or leak these into different environments.
@@ -128,7 +130,7 @@ We now have replaced the original image in the registry we used to create the vi
 
 [#update-vm]
 == Updating the virtual machine
-==== _Return to the tab labeled "Ops SSH session" to proceed with the update_ 
+==== _Return to the tab labeled "Ops SSH session"_
 
 By default, image mode hosts ship with a timer that checks for and applies available updates.
 [source,bash,role="execute",subs=attributes+]
@@ -143,6 +145,8 @@ This can be controlled via the Containerfile, we'll take a look at an example of
 ----
 systemctl status bootc-fetch-apply-updates.timer --no-pager
 ----
+
+TIP: If the terminal picks up underlining from the output, run `reset` in the terminal to clear it 
 
 Rather than wait for the timer to fire, go ahead and run `bootc update` by hand.
 (Reminder, the password for `sudo` is `redhat` as set in the customization blueprint)
@@ -171,6 +175,9 @@ sudo podman login -u core -p redhat registry-{guid}.{domain} --authfile=/etc/ost
 ----
 file /etc/ostree/auth.json
 ----
+....
+/etc/ostree/auth.json: regular file, no read permission
+....
 
 === Deploying the update
 With the system credentials in place, try the update again.

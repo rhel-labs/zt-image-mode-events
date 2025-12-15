@@ -141,7 +141,7 @@ sudo bootc update --apply
 ===== _Log back into the VM by clicking the `reconnect` button or the refresh icon in the tab title._
 
 There are other options for `upgrade` to help with planning changes to the hosts, like `--check`.
-This will compare the image in the registry with what's on the host.
+This will compare the image in the registry with what's on the host, useful to double check you've published an update.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc upgrade --check

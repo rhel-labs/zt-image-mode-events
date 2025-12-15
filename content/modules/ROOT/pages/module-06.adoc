@@ -17,7 +17,8 @@ The File Access Policy Daemon is a service that implements application allow-lis
 
 NOTE: We will be adding these changes after the Maintainer metadata line that was added earlier in our Containerfile so, after the "LABEL vendor="Example Corp" line, we'll add the following
 
-[source,bash,role="execute",subs=attributes+]
+FAPolicyD is one of the standard tools the security team asked for, including the audit subsystem and SELinux troubleshooting. We'll also install the packages for the SCAP policy tools now since we know that's coming.
+[source,dockerfile,role="execute",subs=attributes+]
 ----
 # Security and Hardening 
 
@@ -26,12 +27,11 @@ RUN dnf -y install audit fapolicyd openscap-utils scap-security-guide setroubles
 RUN systemctl enable fapolicyd
 ----
 
-We are adding more than just FAPolicyd in that dnf install, we will be using those other packages later.
-Notice the only thing that needs to be defined to get FAPolicyD running at boot is a standerd `systemctl` call.
+Notice the only thing that needs to be defined to get FAPolicyD running at boot is a standard `systemctl` call.
 Since we are targeting full RHEL systems and not containers, systemd is always running and available post-install so there's no need for any additional `init` environments or `ENTRYPOINT` definitions.
  
 
-== Build and Push
+== Build the image and VM
 
 Build the image so we can deploy our new VM and see if FAPolicyD is working.
 
@@ -73,7 +73,7 @@ virt-install --name security-vm \
   --noreboot
 ----
 
-After that completes, you will need to start up securty-vm, and then you will find the new system in the Security VM tab.
+After that completes, you will need to start up securty-vm, and then you will find the new system in the Sec SSH session tab.
 
 [source,bash,role="execute",subs=attributes+]
 ----

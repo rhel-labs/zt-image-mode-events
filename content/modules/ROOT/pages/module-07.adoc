@@ -37,7 +37,7 @@ And then add the following in its place.
 We'll use the new `oscap-im` tool to scan and remediate the image at build time.
 This tool is also part of the `openscap-utils` package and is specially designed for operating inside a containerized build.
 
-[source,bash,role="execute",subs=attributes+]
+[source,dockerfile,role="execute",subs=attributes+]
 ----
 ENV profileID=cis_server_l1_customized <.>
 
@@ -98,12 +98,6 @@ You should see a score in the 90's like the output below:
 ....
     <score system="urn:xccdf:scoring:default" maximum="100.000000">92.530121</score>
 ....
-
-Another service that was configured by the policy is AIDE.
-[source,bash,role="execute",subs=attributes+]
-----
-sudo aide --check
-----
 
 What about FAPolicyD?
 [source,bash,role="execute",subs=attributes+]

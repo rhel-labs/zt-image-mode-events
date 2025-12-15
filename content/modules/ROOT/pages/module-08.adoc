@@ -41,7 +41,28 @@ sudo dnf -y install --transient netcat
 ----
 Now you can reverse-shell all day long if you'd like. 
 
-Troubleshooting can sometimes be chaoitic, and you're installing tools to help you gather your data.  It can be difficult to keep track of, and then remove all of those packages when you're done.  With a transient package though, all it takes is a reboot, and the package is gone. 
+[source,bash,role="execute",subs=attributes+]
+----
+df -Th | grep -v /run
+----
+....
+Filesystem     Type      Size  Used Avail Use% Mounted on
+composefs      overlay   8.1M  8.1M     0 100% /
+/dev/vda4      xfs       8.5G  2.9G  5.7G  34% /etc
+devtmpfs       devtmpfs  1.9G     0  1.9G   0% /dev
+tmpfs          tmpfs     2.0G     0  2.0G   0% /dev/shm
+tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
+/dev/vda3      xfs       960M  157M  804M  17% /boot
+/dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
+overlay        overlay   8.5G  2.9G  5.7G  34% /usr
+....
+
+You can install more packages with this overlay active.
+[source,bash,role="execute",subs=attributes+]
+----
+sudo dnf -y install --transient pshark
+----
+Troubleshooting can sometimes be chaotic, and you're installing tools to help you gather your data.  It can be difficult to keep track of, and then remove all of those packages when you're done.  With a transient package though, all it takes is a reboot, and the package is gone. 
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -66,4 +87,27 @@ nc -l 4242 | /bin/bash
 -bash: nc: command not found
 ....
 
+And the overlay for `/usr` is also gone
+[source,bash,role="execute",subs=attributes+]
+----
+df -Th | grep -v /run
+----
+....
+Filesystem     Type      Size  Used Avail Use% Mounted on
+composefs      overlay   8.1M  8.1M     0 100% /
+/dev/vda4      xfs       8.5G  2.9G  5.7G  34% /etc
+devtmpfs       devtmpfs  1.9G     0  1.9G   0% /dev
+tmpfs          tmpfs     2.0G     0  2.0G   0% /dev/shm
+tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
+/dev/vda3      xfs       960M  157M  804M  17% /boot
+/dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
+....
+
 This can be useful for all sorts of tools that are only temporarily or sporadically needed for troubleshooting or other reaons, like security scans.
+
+We'll continue the troubleshooting theme in the next section, looking at the developer's recent image mode Containerfile.
+
+== Core principles
+Centralizing package control at the image layer is useful, but sometimes local changes are needed.
+Image mode provides unique ways to temporarily provide packages or other local changes.
+
