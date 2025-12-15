@@ -122,6 +122,35 @@ EOF
 
 chmod u+x /root/.wait_for_iso_vm.sh
 
+# Script that manages the VM SSH session tab
+# Waits for the domain to start and networking before attempting to SSH to guest
+cat <<'EOF'> /root/.wait_for_security_vm.sh
+echo "Waiting for VM 'security-vm' to be running..."
+VM_READY=false
+VM_STATE=""
+VM_NAME=security-vm
+while true; do
+    VM_STATE=$(virsh domstate "$VM_NAME" 2>/dev/null)
+    if [[ "$VM_STATE" == "running" ]]; then
+        VM_READY=true
+        break
+    fi
+    sleep 10
+done
+echo "Waiting for SSH to be available..."
+NODE_READY=false
+while true; do
+    if ping -c 1 -W 1 ${VM_NAME} &>/dev/null; then
+        NODE_READY=true
+        break
+    fi
+    sleep 5
+done
+ssh core@${VM_NAME}
+EOF
+
+chmod u+x /root/.wait_for_security_vm.sh
+
 # Clone the git repo for the application to deploy
 git clone --single-branch --branch bootc https://github.com/rhel-labs/python-hostinfo.git /root/bootc-version
 

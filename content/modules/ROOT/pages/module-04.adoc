@@ -56,6 +56,11 @@ Now that we have our new configs, we can add them to the end of the Containerfil
 nano Containerfile
 ----
 
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
+
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Add image controlled configs
@@ -128,6 +133,8 @@ We now have replaced the original image in the registry we used to create the vi
 == Updating the virtual machine
 _Return to the tab labeled "Ops SSH session" to proceed with the update_ 
 
+Switch back to the tab labeled Ops VM.
+
 By default, image mode hosts ship with a timer that checks for and applies available updates.
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -191,7 +198,7 @@ Total new layers: 72    Size: 1.1 GB
 Removed layers:   69    Size: 2.1 GB
 Added layers:     72    Size: 1.1 GB
 ....
-NOTE: At the time of writing, the first update of an image mode host may be large. This is due to registry versus local storage when the disk image was created.
+NOTE: At the time of writing, the first update of an image mode host may be larger than just the layers changed at build time. This is due to registry versus local storage when the disk image was created.
 
 Let's check the current status of the host.
 [source,bash,role="execute",subs=attributes+]
@@ -229,7 +236,8 @@ Look for the kernel arguments we added via the `bootc` configuration path.
 cat /proc/cmdline
 ----
 
-We can also test the `sudoers` rules and `bootc status` at the same time.
+The status now shows a rollback image instead of a staged image. 
+We'll explore what that means in a later exercise.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status

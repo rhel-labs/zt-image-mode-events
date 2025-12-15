@@ -14,7 +14,7 @@ On the build host, let's update the config file and remove the duplicate `tty0` 
 
 [source,bash,role="execute",subs=attributes+]
 ----
-cd
+cd ~
 ----
 
 [source,bash,role="execute",subs=attributes+]

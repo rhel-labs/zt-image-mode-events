@@ -244,6 +244,7 @@ BOOT_IMAGE=(hd0,gpt3)/boot/ostree/default-9cba41d43c6b3669ffb845fb0fc12443e5f9e5
 We can see in the kernel command line some clear ties to an `ostree` partition, which is how images are stored and managed on a bootc host. We'll talk more about that later.
 
 One other obvious difference for bootc hosts is the layout of the filesystem. 
+Let's ignore the dynamic `/run` directories.
 
 [source,bash,role="execute",subs=attributes+]
 ----

@@ -172,6 +172,8 @@ _Switch to the tab labeled "Build host terminal"_
 Let's use the upstream fix to create a local version of nginx.tmpfiles in the system location. 
 This means when the new RPM lands, we can just remove this from our Containerfile and the system will continue to work as expected.
 
+Switch to the tab labeled Build host.
+
 Let's add a `heredoc` just before the linter in the Containerfile to create the new file for testing.
 [source,bash,role="execute",subs=attributes+]
 ----
