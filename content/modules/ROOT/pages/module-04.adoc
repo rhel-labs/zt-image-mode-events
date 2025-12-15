@@ -4,6 +4,7 @@ In this lab, you will learn how to make configuration or software changes in ima
 
 [#update-container]
 == Changing the bootc image
+==== _Click on the tab labeled "Build host"_ 
 
 We've created our first system but there are a few things that might be missing we typically do to our systems. 
 Not requiring a password every time we use sudo might be something we allow admins to do. 
@@ -56,11 +57,6 @@ Now that we have our new configs, we can add them to the end of the Containerfil
 nano Containerfile
 ----
 
-[source,bash,role="execute",subs=attributes+]
-----
-nano Containerfile
-----
-
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Add image controlled configs
@@ -103,7 +99,8 @@ podman login -u core -p redhat registry-{guid}.{domain}
 To create system credentials, we'll reuse the user login, but typically some sort of service acccount would be used.
 In any case, the files are identeical, and can be published in the image. This will allow a newly created image mode host to update immediately after install.
 
-The credentials are on disk, but the `podman login` command can also generate a file for a single registry. 
+The credentials are on disk, but in the user cache.
+The `podman login` command can also generate a file for a single registry. 
 This can be useful as users may have personal credentials for a number of different registries and we don't want to accidentally include or leak these into different environments.
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -131,9 +128,7 @@ We now have replaced the original image in the registry we used to create the vi
 
 [#update-vm]
 == Updating the virtual machine
-_Return to the tab labeled "Ops SSH session" to proceed with the update_ 
-
-Switch back to the tab labeled Ops VM.
+==== _Return to the tab labeled "Ops SSH session" to proceed with the update_ 
 
 By default, image mode hosts ship with a timer that checks for and applies available updates.
 [source,bash,role="execute",subs=attributes+]
@@ -177,6 +172,7 @@ sudo podman login -u core -p redhat registry-{guid}.{domain} --authfile=/etc/ost
 file /etc/ostree/auth.json
 ----
 
+=== Deploying the update
 With the system credentials in place, try the update again.
 (Reminder, the password for `sudo` is `redhat`)
 [source,bash,role="execute",subs=attributes+]
@@ -228,9 +224,10 @@ sudo systemctl reboot
 
 [#testing]
 == Testing the changes
-Log back into the VM by hitting the `reconnect` button or the reload icon next to the tab title.
+==== _Log back into the VM by hitting the `reconnect` button or the reload icon next to the tab title._
 
 Look for the kernel arguments we added via the `bootc` configuration path.
+They should land at the end of the kernel command line.
 [source,bash,role="execute",subs=attributes+]
 ----
 cat /proc/cmdline

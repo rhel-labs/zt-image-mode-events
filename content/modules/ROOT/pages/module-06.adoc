@@ -1,15 +1,21 @@
 = Security and Compliance in an Image Mode world.
 
-Building and Deploying using Image Mode has some built-in benefits from a security and compliance perspective.  First, systems deployed with Image Mode are more likely to be built to your desired specifications, and second it is much easier to make sure that they stay that way.  In the next few modules we'll walk through how to add security and compliance into your build, and also how to apply that policy using automation.  We will also touch a bit on drift and getting your systems back into compliance after an event.
+Building and deploying using Image Mode has some built-in benefits from a security and compliance perspective.  
+First, systems deployed with Image Mode are more likely to be built to your desired specifications, and second it is much easier to make sure that they stay that way.  
+In the next few modules we'll walk through how to add security and compliance into your build, and also how to apply that policy using automation.  
+We will also touch a bit on drift and getting your systems back into compliance after an event.
 
-== Building a new VM
-Because in this section we will be making significant changes to our system, we are going to start fresh.  First we will build an updated bootc image, and then we will build a new guest vm just like we did at the beginning of the lab.
+[NOTE] 
+====
+Because we will be making significant changes to our system, we are going to start fresh.  First we will build an updated bootc image, and then we will build a new guest vm just like we did at the beginning of the lab.
+====
 
-== Adding a security control to your image FAPolicyd
+== Adding security controls to your image: FAPolicyd
 
-A common service that helps you meet your security and compliance mandates, is FAPolicyd.  The File Access Policy Daemon is a service that implements application allow-listing.  So let's see what it looks like to simply add it to our `Containerfile`.  
+One of the common services the security team uses to meet compliance and security mandteas is FAPolicyD.
+The File Access Policy Daemon is a service that implements application allow-listing.  So let's see what it looks like to simply add it to our `Containerfile`.  
 
-** _NOTE_: We will be adding these changes after the Maintainer metadata line that was added earlier in our Containerfile so, after the "LABEL vendor="Example Corp" line, we'll add the following
+NOTE: We will be adding these changes after the Maintainer metadata line that was added earlier in our Containerfile so, after the "LABEL vendor="Example Corp" line, we'll add the following
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -21,18 +27,17 @@ RUN systemctl enable fapolicyd
 ----
 
 We are adding more than just FAPolicyd in that dnf install, we will be using those other packages later.
+Notice the only thing that needs to be defined to get FAPolicyD running at boot is a standerd `systemctl` call.
+Since we are targeting full RHEL systems and not containers, systemd is always running and available post-install so there's no need for any additional `init` environments or `ENTRYPOINT` definitions.
+ 
 
 == Build and Push
 
-Now, if we build the image and push it, we can deploy and see if FAPolicyD is working.
+Build the image so we can deploy our new VM and see if FAPolicyD is working.
 
 [source,bash,role="execute",subs=attributes+]
 ----
 podman build --file Containerfile --tag registry-{guid}.{domain}/base
-----
-[source,bash,role="execute",subs=attributes+]
-----
-podman push registry-{guid}.{domain}/base
 ----
 
 Now, we can build a new disk image, and start our new VM. 
@@ -54,7 +59,7 @@ Now let's copy that disk image to the proper location.
 cp -f qcow2/disk.qcow2 /var/lib/libvirt/images/security-vm.qcow2
 ----
 
-Noiw we can build that into a new VM.
+Now we can build that the same way we created the Ops VM.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -75,12 +80,18 @@ After that completes, you will need to start up securty-vm, and then you will fi
 virsh start security-vm
 ----
 
+== Testing FAPolicyd
+==== _Click on the tab labeled ">_ Sec SSH session"_ 
 
-## Testing FAPolicyd
 Our goal here was to deploy fapolicyd, so now that we have, let's see if its working. 
 
 The File Access Policy daemon's job is to prevent you from running unapproved applications.  Out of the box, it does this using a relatively simple application allow-list that has known trusted paths for installed binaries.  
+[source,bash,role="execute",subs=attributes+]
+----
+sudo fapolicyd-cli -l
+----
 
+Since the system software deployed on an image mode host is part of a read-only filesystem, we can't simply overwrite a binary with a trusted path.
 To test whether it's working, we can just take a known good binary, and put it somewhere odd, and then try to run it. 
 
 [source,bash,role="execute",subs=attributes+]
@@ -88,15 +99,15 @@ To test whether it's working, we can just take a known good binary, and put it s
 cp /bin/ls ~
 ----
 
+You should not be allowed to run `ls` from your home directorn. 
 [source,bash,role="execute",subs=attributes+]
 ----
 ~/ls
 ----
-
-You should not be allowed to run ls from your home directorn. 
 ....
-$ ~/ls 
--bash: /home/rhel/ls: Operation not permitted
+-bash: /home/core/ls: Operation not permitted
 ....
 
-Great! FAPolicyd works!  But, we're nowhere close to being compliant with a security policy, for that we'll need to do more than just install a service and enable it.  For that, we'll want to deploy a full policy.  You guessed it, in our next module we'll do just that! 
+Great! FAPolicyd works!  
+But, we're nowhere close to satifying the security teams requirements, for that we'll need to do more than just install a service and enable it.  
+For that, we'll want to deploy a full policy.  You guessed it, in our next module we'll do just that! 

@@ -2,6 +2,8 @@
 
 Creating production RHEL systems is a group effort, meeting the requirements of different teams to deliver applications in a secure and manageable fashion.
 
+== Design goals
+
 The admin team uses a standard set of tools to manage RHEL hosts at scale.
 Common logging infrastructure, metrics gathtering, and user tools need to be in place for the team to have a seamless experience across the fleet.
 
@@ -14,7 +16,7 @@ In this lab, you'll build an image mode host to support this new application bas
 The design of a standard operating environment is a common practice that image mode provides some new options and capabilites to support.
 
 == Lab machines
-You will interact with a total of 5 systems: the primary build machine, a container registry, and image mode VMs.  Most of your work will be done on the lab hypervisor, and you will create image mode VMs as part of the exercises. Caution should be taken when instructed to reboot a system that you are on the correct host.
+You will interact with a total of 4 systems: the primary build machine, a container registry, and image mode VMs.  Most of your work will be done on the lab hypervisor, and you will create image mode VMs as part of the exercises. Caution should be taken when instructed to reboot a system that you are on the correct host.
 
 === System purpose
 
@@ -24,4 +26,4 @@ NOTE: This machine will also host some of the virtual machines used during exerc
 
 *Container registry*: The registry in this lab environment is a basic registry with no management tooling. More tools, workflows, and insights are available from more modern registry solutions like quay.io. For the purposes of the exercises, a simple registry to host images is all that's needed.
 
-*Target hosts*: KVM based virtual machines will be created during an exercise to serve as an install location for the image mode system. Any cloud, virtual, or bare metal machine can be used in practice. This lab won't go into detail on management of KVM, but will use virt-install and virsh to manage the local VM.
+*Target hosts*: KVM based virtual machines will be created during an exercise to serve as an install location for the image mode systems. Any cloud, virtual, or bare metal machine can be used in practice. This lab won't go into detail on management of KVM, but will use virt-install and virsh to manage the local VM.

@@ -7,6 +7,7 @@ In this lab, we'll take a pattern from the application container world to move t
 
 [#write-containerfiles]
 == Using multi-stage builds
+==== _Click on the tab labeled "Build host"_ 
 
 One common pattern in container builds is offloading the creation of binary components that need to be generated at build time, but don't need to carry all of the dependencies into the final image. 
 The OCI specification allows for multiple image and assoociated actions to be defined in a single Containerfile.
@@ -31,7 +32,7 @@ RUN semanage fcontext -a -t httpd_var_run_t /run/flask-app
 <.> Other work needed to make things take effect
 
 The `WORKDIR` directive is what's creating the intermedite build files inside the image.
-The `WORKDIR` target (`/app`) is essentially a `cd` inside the image filesystem, not the build host.
+The `WORKDIR` target (`/app`) is essentially a `cd` inside the *image filesystem*, not the build host.
 
 Let's rearrange the work for this module to use a multi-stage build and not carry around extra files in the application directory.
 [source,bash,role="execute",subs=attributes+]
@@ -107,9 +108,10 @@ Trying to pull registry-j475j.apps.ocpvdev01.rhdp.net/base:latest...
 podman push registry-{guid}.{domain}/app-test:v2
 ----
 
-_Switch to the "Security SSH session" tab to test the latest build of the image._
+==== _Switch to the "Security SSH session" tab to test the latest build of the image._
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --soft-reboot=required --apply
 ----
 
+As a final sanity check, is the app http://hostinfo-{guid}.{domain}/[up and running?,window=_blank]
