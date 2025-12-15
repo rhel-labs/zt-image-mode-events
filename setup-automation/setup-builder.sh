@@ -166,4 +166,3 @@ if [ -d $TMPDIR/${EXAMPLE} ]; then
     mv $TMPDIR/${EXAMPLE} ${EXAMPLE}
 fi
 rm -rf $TMPDIR
-

@@ -1,0 +1,19 @@
+FROM registry.redhat.io/rhel10/rhel-bootc:10.1
+
+RUN dnf -y install pcp-zeroconf \
+        rsyslog \
+        tmux \
+        tuned
+
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+
+RUN dnf -y install btop iftop
+
+# Add image controlled configs
+# COPY 10-wheel /etc/sudoers.d/wheel
+# COPY console_kargs.conf /usr/lib/bootc/kargs.d/05-cloud-kargs.toml
+# COPY auth.json /etc/ostree/auth.json
+ADD etc/ /etc
+ADD usr/ /usr
+
+RUN systemctl mask bootc-fetch-apply-updates.timer

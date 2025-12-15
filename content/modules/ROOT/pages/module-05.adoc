@@ -2,18 +2,45 @@
 This is a decent start for our gold image, but let's address a few more topics.
 Our goals are to centralize our configuration and build processes while making it easier to work acrross teams.
 
-Each directive in the Containerfile adds a new layer to the resulting image.
-Understanding layering will help design images that make the most efficient use of the local build cache and network updates.
+_Before proceeding, make sure you have changed back to the tab labeled "Build host'._
 
-=== Managing system configurations
-We'll take a page from application container design and use the `COPY` directive to manage our central configs as if they were directories.
-The configs we have created so far will move into those directories, reducing the number of commands and therefor the number of layers created by the build.
+One of the benefits of containerized builds is extra metadata available by default.
+Instead of relying on naming conventions or `bootc status` output, we can add information to the images via labels.
 
-First, let's set up a directory structure that mimics `/etc` and `/usr` and  move the files we created inside. 
-This allows us to add all the configs at once with a single command and in a single layer of the image.
+Let's add some basic information, the contact email for the team who owns the image and the "vendor", here our company.
+These will be added and can be queried remotely in the registry.
+There are other labels that are created by Red Hat when published that include RHEL version and more.
 
-NOTE: These are local, relative to the location of the Containerfile, not the build system.
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
 
+These can go anywhere, but typically they will be near the start of the Containerfile, after the `FROM` line.
+Remember, like any other container image build, `bootc` image builds will also use the local build cache.
+If you place these before the package install you will trigger all of those steps in the build.
+[source,dockerfile,role="execute",subs=attributes+]
+----
+# Set up some variables and labels to ID images in our environments
+MAINTAINER sysadmins@example.com
+# RHEL version inherited from bootc base as redhat.version-id and release
+LABEL vendor="Example Corp" 
+----
+
+We briefly mentioned that responsibility for `/etc` is split between the image and the running host.
+This allows for centralizing common configs in our builds, while allowing for runtime flexibility.
+Most of the image controlled system software is in `/usr` making it a good location for things we absolutely want controlled via the image only.
+
+Based in plaintext definition, image mode builds lend themselves to 'Infrastructure as Code' and 'GitOps' style practices.
+For example, creating a single version controlled repository to hold all of the build and configuration information for a single target image keeps everything centralized and maintainable.
+Package mode builds tend to have multiple different build artifacts spread across different tools, kickstart files, ansible playbooks and templates, version controlled config files, which can make this sort of IaC repo a little more challenging.
+
+Let's use that mindset and set up a directory structure that mimics `/etc` and `/usr` to hold the specific configurations that will apply to the hosts created from this image.
+This allows us to add all the configs at once with a single COPY command and in a single layer of the image.
+
+NOTE: These are local, relative to the location of the Containerfile, not the build host filesystem. Remenber we're thinking about this as a git repository.
+
+==== Create the structure
 [source,bash,role="execute",subs=attributes+]
 ----
 mkdir -p etc/sudoers.d
@@ -27,26 +54,52 @@ mkdir -p etc/ostree
 mkdir -p usr/lib/bootc/kargs.d
 ----
 
+==== Organize our configs
 [source,bash,role="execute",subs=attributes+]
 ----
 mv 10-wheel etc/sudoers.d
 ----
 [source,bash,role="execute",subs=attributes+]
 ----
-mv console_kargs.conf usr/lib/bootc/kargs.d/05-cloud-kargs.toml
+mv console_kargs.toml usr/lib/bootc/kargs.d/05-cloud-kargs.toml
+----
+[source,bash,role="execute",subs=attributes+]
+----
+mv auth.json etc/ostree/
 ----
 
-We briefly mentioned that responsibility for `/etc` is split between the image and the running host.
-This means we can centralize common configs in our builds, while allowing for runtime flexibility.
+Inspect the directories and files we just organized. 
+[source,bash,role="execute",subs=attributes+]
+----
+tree $(pwd)/{etc,usr}
+----
+....
+/root/etc
+├── ostree
+│   └── auth.json
+└── sudoers.d
+    └── 10-wheel
+/root/usr
+└── lib
+    └── bootc
+        └── kargs.d
+            └── 05-cloud-kargs.toml
 
-Replace the individual file COPY lines with these two lines for our new directories. 
+7 directories, 3 files
+....
+
+We'll take a page from application container design and use the `COPY` directive to manage our central configs as if they were directories on the end host.
+Each directive in the Containerfile adds a new layer to the resulting image.
+Understanding layering will help design images that make the most efficient use of the local build cache and network updates.
+
+Replace the individual file COPY lines with these two lines to copy our new directories to the final host locations. 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 COPY etc/ /etc
 COPY usr/ /usr
 ----
 
-=== Automatic updates
+We briefly mentioned that by default, there's a timer active that will apply updates to an image mode host.
 In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
 One simple way to disable the timer is to mask the service with `systemd`. 
 This will ensure that the service isn't unexpectedly enabled after a change or update.
@@ -54,21 +107,6 @@ Since this is a systemd timer, you can manange and modify the defintion to fit y
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 RUN systemctl mask bootc-fetch-apply-updates.timer
-----
-
-=== Container metadata
-One of the benefits of containerized builds is extra metadata available by default.
-Instead of relying on naming conventions or `bootc status` output, we can add information to the images via labels.
-
-Let's add some basic information, the contact email for the team who owns the image and the "vendor", here our company.
-These will be added and can be queried remotely in the registry.
-There are other labels that are created by Red Hat when published that include RHEL version and more.
-[source,dockerfile,role="execute",subs=attributes+]
-----
-# Set up some variables and labels to ID images in our environments
-MAINTAINER sysadmins@example.com
-# RHEL version inherited from bootc base as redhat.version-id and release
-LABEL vendor="Example Corp" 
 ----
 
 With our updated Containerfile, let's do a final build.
@@ -84,11 +122,27 @@ podman push registry-{guid}.{domain}/base
 
 ==== Test the update on the VM
 
-Apply our final update
+Previously, we staged the update and then manually rebooted the system into the staged image.
+This provides a lot of control to update before a maintenance window and apply the update when downtime can be negotiated.
+The `bootc` commands can also reboot immediately on success when given the `--apply` flag.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --apply
 ----
 
-In our next module, we'll be working with security hardening in an image mode workflow.  
+Log back into the VM by clicking the `reconnect` button or the refresh icon in the tab title.
 
+There are other options for `upgrade` to help with planning changes to the hosts, like `--check`.
+This will compare the image in the registry with what's on the host.
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc upgrade --check
+----
+....
+No changes in: docker://registry-mjghb.apps.ocpvdev01.rhdp.net/base
+....
+
+== Core principles
+In this exercise we focused on making some idomatic changes to the Containerfile and exploring how image mode hosts handle files. 
+We looked at how the build files may differ from the collection of automation and files for a package mode host.
+We've satisfied the basic needs of the operations team, in the next section we'll tackle the security requiments and dig deeper into some of these topics.

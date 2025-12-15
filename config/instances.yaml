@@ -19,6 +19,7 @@ virtualmachines:
       - qemu-kvm
       - libvirt-nss
       - nano
+      - nginx
       - openscap-utils
       - scap-security-guide
     services:
@@ -34,6 +35,12 @@ virtualmachines:
             protocol: TCP
             targetPort: 443
             name: registry
+      - name: hostinfo
+        ports:
+          - port: 8080
+            protocol: TCP
+            targetPort: 8080
+            name: hostinfo
     routes:
       - name: registry-http
         host: registry
@@ -46,6 +53,11 @@ virtualmachines:
         service: registry
         targetPort: 443
         tls: true
+      - name: hostinfo
+        host: hostinfo
+        service: hostinfo
+        targetPort: 8080
+        tls: false
     terminals:
       - name: wetty_bootc_vm
         command: /root/.wait_for_bootc_vm.sh

@@ -107,7 +107,7 @@ Trying to pull registry-j475j.apps.ocpvdev01.rhdp.net/base:latest...
 podman push registry-{guid}.{domain}/app-test:v2
 ----
 
-ON image mode host? (need external testing)
+_Switch to the "Security SSH session" tab to test the latest build of the image._
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --soft-reboot=required --apply
