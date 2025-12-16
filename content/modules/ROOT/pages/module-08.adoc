@@ -1,14 +1,28 @@
+= Build vs run considerations
+One of the concepts that will continue to come to surface when exploring image mode is when to centralize something at build time vs customize at run time.
+The design goal is to push as much _as possible_ to build time and increae reuse.
+However, run time changes are always required for instances, even if only for networking and hostnames.
+Image mode offers another way to address run time changes temporarily.
+
 == Installing troublsehooting tools
-It happens, we know.  Sometimes you need to install a package temporarility for some purpose.  Maybe it's troubleshooting, or gathering information for a support request, or just to carry out some task on your servers.  In RHEL package mode this is simple, you do a dnf install, and you're done. This however introduces drift.  It can also be a concern from a sercurity and compliance perspective. 
+It happens, we know.  
+Different teams have different tools that are only used occasionally for various reasons.
+Maybe it's troubleshooting, or gathering information for a support request, or just to carry out some task on your servers.  
 
-Imagine it, you're asked to get a packet capture to troubleshoot some network latency issue.  So you install tcpdump, and do your work.  Did you remember to remove it afterword?  Or another example, you install netcat to test some firewall ports, and then there it is, ready for an attacker to leverage for a reverse shell.  These are core examples of why package drift can be a bad thing.  Luckily RHEL Image Mode helps you control package drift by moving package installs into your image creation. 
+Imagine it, you're asked to get a packet capture to troubleshoot some network latency issue.  So you install tcpdump, and do your work.  Did you remember to remove it afterword?  Or another example, you install netcat to test some firewall ports, and then there it is, ready for an attacker to leverage for a reverse shell.  These are core examples of why package drift can be a bad thing.  
 
-There still might be a time where you'll need tcpdump or netcat though.  Should you add those to your bootc image?  No!  You'll install them transiently, and then they will go away on their own the next time the system is imaged, updated, or even rebooted. 
+In RHEL package mode this is simple, you do a dnf install, and you're done. This however introduces drift.  It can also be a concern from a sercurity and compliance perspective, and be hard to do on a temporary basis.
+Luckily RHEL Image Mode helps you control package drift by moving package installs into your image creation. 
+
+But should you even add those to your bootc image? No! 
+These are usually one off needs, and carrying them as part of a gold image increases maintenace and could increase sercurity risk.
+Instead, you can install them transiently, and then they will go away on their own the next time the system is imaged, updated, or even rebooted. 
 
 == Transient package installs
+==== _Click on the tab labeled "Sec SSH session"_ 
 
-Let's say you needed to install netcat, like in my example above.
-
+Let's say you needed to install netcat, like in the example above.
+Normally you'd just use `dnf`:
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo dnf -y install netcat
@@ -19,15 +33,36 @@ This bootc system is configured to be read-only. Pass --transient to perform thi
 Operation aborted.
 ....
 
-There is a special flag that tells dnf to install a transient package, which works great with an immutable OS. 
-
+There is a special flag that tells `dnf` to install a package on an image mode host.
+This creates a new temporary overlay filesystem to make a writable `/usr` so `dnf` can make changes to the RPM database and install the binaries in the standard locations
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo dnf -y install --transient netcat
 ----
 Now you can reverse-shell all day long if you'd like. 
 
-Troubleshooting can sometimes be chaoitic, and you're installing tools to help you gather your data.  It can be difficult to keep track of, and then remove all of those packages when you're done.  With a transient package though, all it takes is a reboot, and the package is gone. 
+[source,bash,role="execute",subs=attributes+]
+----
+df -Th | grep -v /run
+----
+....
+Filesystem     Type      Size  Used Avail Use% Mounted on
+composefs      overlay   8.1M  8.1M     0 100% /
+/dev/vda4      xfs       8.5G  2.9G  5.7G  34% /etc
+devtmpfs       devtmpfs  1.9G     0  1.9G   0% /dev
+tmpfs          tmpfs     2.0G     0  2.0G   0% /dev/shm
+tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
+/dev/vda3      xfs       960M  157M  804M  17% /boot
+/dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
+overlay        overlay   8.5G  2.9G  5.7G  34% /usr
+....
+
+You can install more packages with this overlay active.
+[source,bash,role="execute",subs=attributes+]
+----
+sudo dnf -y install --transient pshark
+----
+Troubleshooting can sometimes be chaotic, and you're installing tools to help you gather your data.  It can be difficult to keep track of, and then remove all of those packages when you're done.  With a transient package though, all it takes is a reboot, and the package is gone. 
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -40,7 +75,7 @@ Now you see it.
 sudo reboot
 ----
 
-** _NOTE_: Rebooting will disconnect your tab from the security-vm system, simply press the 'reconnect' button in the center of the terminal to re-establish your session
+NOTE: Rebooting will disconnect your tab from the security-vm system, simply press the 'reconnect' button in the center of the terminal to re-establish your session
 
 After the system is rebooted, you can try to run netcat all you'd like, it's gone. 
 
@@ -48,11 +83,31 @@ After the system is rebooted, you can try to run netcat all you'd like, it's gon
 ----
 nc -l 4242 | /bin/bash
 ----
-Now you don't
 ....
-[core@localhost ~]$ nc -l 4242 | /bin/bash
 -bash: nc: command not found
-[core@localhost ~]$ 
 ....
 
+And the overlay for `/usr` is also gone
+[source,bash,role="execute",subs=attributes+]
+----
+df -Th | grep -v /run
+----
+....
+Filesystem     Type      Size  Used Avail Use% Mounted on
+composefs      overlay   8.1M  8.1M     0 100% /
+/dev/vda4      xfs       8.5G  2.9G  5.7G  34% /etc
+devtmpfs       devtmpfs  1.9G     0  1.9G   0% /dev
+tmpfs          tmpfs     2.0G     0  2.0G   0% /dev/shm
+tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
+/dev/vda3      xfs       960M  157M  804M  17% /boot
+/dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
+....
+
+This can be useful for all sorts of tools that are only temporarily or sporadically needed for troubleshooting or other reaons, like security scans.
+
+We'll continue the troubleshooting theme in the next section, looking at the developer's recent image mode Containerfile.
+
+== Core principles
+Centralizing package control at the image layer is useful, but sometimes local changes are needed.
+Image mode provides unique ways to temporarily provide packages or other local changes.
 

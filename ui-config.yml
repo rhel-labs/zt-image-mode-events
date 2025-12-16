@@ -27,9 +27,6 @@ antora:
     - name: "module-08"
       label: "Adding Troubleshooting tools"
       solveButton: false
-    - name: "module-09"
-      label: "Building a troubleshooting toolbox"
-      solveButton: false
     - name: "module-10"
       label: "Troubleshooting an image mode deployment"
       solveButton: false
@@ -51,26 +48,19 @@ tabs:
     url: /wetty/ssh/root
   - name: ">_ Ops SSH session"
     url: /wetty_bootc_vm/ssh/root
-  - name: "ISO SSH session"
-    url: /wetty_iso_vm/ssh/root
-  - name: "Security VM session"
-    url: /wetty_security_vm/ssh/root
-  - name: ">_ Image mode host"
-    url: /wetty_imrhel/ssh/root
     modules:
       - module-02
       - module-03
       - module-04
       - module-05
-      - module-06
       - module-10
-  - name: ">_ Security SSH session"
-    url: /wetty_iso_vm/ssh/root
+      - module-14
+  - name: ">_ Sec SSH session"
+    url: /wetty_security_vm/ssh/root
     modules:
       - module-06
       - module-07
       - module-08
-      - module-09
       - module-11
       - module-12
       - module-13

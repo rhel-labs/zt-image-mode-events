@@ -55,7 +55,8 @@ NOTE: This is only a sample and this public key will not work in your environmen
 
 [#create]
 == Create the disk image
-
+[%collapsible%open]
+====
 To create a bootable disk image from an OCI image, we have a special version of image builder that has support for `bootc`. This `bootc-image-builder` itself runs as a container, and as a result needs additional capabilities and to be run as `root`. 
 
 As `bootc-image-builder` accesses local storage to find the source image, we need our image in system storage. 
@@ -98,6 +99,8 @@ file qcow2/disk.qcow2
 qcow2/disk.qcow2: QEMU QCOW2 Image (v3), 10737418240 bytes
 ....
 
+====
+
 [#create-vm]
 == Create the virtual machine
 
@@ -129,12 +132,11 @@ We can now start our new bootc virtual machine.
 virsh start bootc-vm
 ----
 
-== Switch to the image mode VM
 NOTE: The terminal pages for the KVM guests have a script that will wait for SSH to become available before trying to log in. If there's a problem with an SSH connection, you can restart the connection using the refresh button in the tab.
 
 [#test]
-== Test and login to the virtual machine
-_Click on the tab labeled "Ops SSH session"_ 
+== Testing the virtual machine
+==== _Click on the tab labeled "Ops SSH session"_ 
 
 Once the script detects SSH is running, you should be automatically logged in as the `core` user created in the `bootc-image-builder` customization. 
 ....
@@ -147,6 +149,8 @@ Let's test one of the packages installed from `EPEL` during the build process.
 btop
 ----
 TIP: You can hit `q` to exit `btop`
+
+=== Getting status
 
 Image mode hosts introduce a new way of understanding what's running on a host. 
 The new `bootc` command is at the heart of operations on image mode hosts.
@@ -227,6 +231,8 @@ status:
   rollbackQueued: false
   type: BootcHost
 ....
+
+=== Exploring differences
 
 Not only do we get detailed information, it's categorized a little differently.
 You can see where fields from the `--verbose` flag line up against internal structures like image information versus ostree internals. 

@@ -89,13 +89,14 @@ Other things may present themselves as we go.
 
 === Derived images
 
-First up, update the FROM line to reference the baseline image you've been building and updating during this lab. 
+First up, move this to the baseline image you've been building and updating during this lab. 
 This means that every bit of customization and software you've installed previously will be available on the host built from this new definition. 
+
 This style of derived images is something very powerful for collaborating while keeping teams focused on their needs. 
 Different teams can work directly from images built by and certified by others, rather than starting from scratch or trying to integrate and apply controls at the end of a long build process.
 This also means less duplication of long Containerfiles for common software and configuration.
 
-Since we're moving to a baseline that's had a compliance policy applied and other changes from the RHT default, we should make sure that this doesn't break anything. 
+Since we're moving to a baseline that's had a compliance policy applied and other changes from the Red Hat supplied original, we should make sure that this doesn't break anything. 
 Let's just update the working Containerfile to use our base and test that first.
 
 [source,bash,role="execute",subs=attributes+]
@@ -124,8 +125,9 @@ podman push registry-{guid}.{domain}/app-test:v2
 
 [#switch-run]
 == Switch and test the image
+==== _Click on the tab labeled "Sec SSH session"_ 
 
-Since we had issues with switching in our initial troubleshooting, log into the _Security VM SSH session_ to test the new build.
+Since we had issues with switching in our initial troubleshooting, log into the Security VM to test the new build.
 
 We'll use the same `bootc switch` command we did on the previous system and just let `bootc` restart the host once it's done.
 
@@ -145,24 +147,31 @@ systemctl status nginx.service --no-pager
 systemctl status info-app.service --no-pager
 ----
 
-Is the app http://hostinfo-{guid}.{domain}/[up and running?,window=_blank]
+The services look fine so check if the app http://hostinfo-{guid}.{domain}/[up and running?,window=_blank]
 
 NOTE: The URL will automatically redirect to the new host in the lab configuration. You will get a `502 Bad Gateway` error if the application is not started.
 
+The app is not reachable, so something changed with the new baseline.
+
 The CIS profile turned on the firewall which wasn't configured in the original developer image.
-We'll need to handle that in the new derived build.
+Check if `http` is in the allowed services list.
 
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo firewall-cmd --list-services
 ----
+
+Not, it's not.
+Let's add it here and re-test to see if that fixes the issue.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo firewall-cmd --add-service http
 ----
 Is the app http://app-{guid}.{domain}/[up and running?,window=_blank]
 
-With the initial test of the secured baseline done, let's move to the next item on the list: what files are getting copied to the host as part of the application repository.
+OK, all good now but we'll need to handle that in the new derived build.
+
+Let's move to the next item on the list: what files are getting copied to the host as part of the application repository.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -190,6 +199,7 @@ We should only have the actual application files here, with the configs in the r
 We can fix that by adding a little structure to the repo.
 
 === Back on the build host
+==== _Click on the tab labeled "Build host"_ 
 
 Make sure you're in the git repository for the application.
 [source,bash,role="execute",subs=attributes+]
@@ -346,7 +356,19 @@ podman push registry-{guid}.{domain}/app-test:v2
 ----
 
 === Soft versus hard reboots
-_Switch to the "Security SSH session" tab to test the latest build of the image._
+
+Having a serial console makes the next test more intersting, and luckily we can get one on to our virtual machine.
+
+[source,bash,role="execute",subs=attributes+]
+----
+virsh console security-vm
+----
+
+You may need to hit `Enter` to see the login prompt.
+Once you do you can proceed to the next step.
+If you like you can execute the next `bootc` instruction in this serical session instead of the web terminal.
+
+==== _Switch to the "Sec SSH session" tab to test the latest build of the image._
 
 We briefly mentioned the idea of "soft reboots" earlier.
 Soft reboots are a new feature of `systemd` that restarts user space (including re-executing itself) without fully restarting the host.
@@ -360,8 +382,18 @@ The `auto` flag tells bootc to execute whichever reboot is applicable.
 sudo bootc update --soft-reboot=required --apply
 ----
 
-Log back into the Security VM on the SSH tab by hitting `reconnect` or using the refresh button in the tab.
+==== _Click on the tab labeled "Build host"_ 
+On the build host, check the output of our serial console.
+So far, the reboots of our VMs have been fairly quick, but you can scroll through the ouput to see that this reboot is different.
+Not only was it quicker, but after `systemd` shut the system down, we never got passed to the BIOS.
 
+To exit the `virsh console` hit `Ctrl+]`
+[source,bash,role="execute",subs=attributes+]
+----
+C^]
+----
+
+==== _Switch to the "Sec SSH session" tab_
 Since soft reboots are a feature of `systemd`, `systemctl show` will provide information as with any other property, like the number of soft reboots for the host.
 [source,bash,role="execute",subs=attributes+]
 ----

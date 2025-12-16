@@ -1,39 +1,51 @@
 = Building policy into a bootc image
 
-We could add all of these various configuration changes directly to our Containerfile and achieve compliance.  But, much like a package mode RHEL host, we can leverage automation to get the bulk of the work done, using Policies. 
+We could add all of the various packages and configuration changes directly to our Containerfile and achieve the security team's goals.  But, much like a package mode RHEL host, we can leverage automation to get the bulk of the work done using SCAP policies. 
 
-First, go back into your Containerfile, and delete the two lines we added to install and enable FAPolicyd. 
+== Tailoring SCAP for compliance
+==== _Click on the tab labeled "Build host terminal"_ 
 
+The security team uses the CIS Level 1 policy with some deviations for all public facing webservers.
+To setup our openscap policy, we will first make a change to the policy using `autotailor`. 
+You will likely need to tailor any compliance policy to your organization's needs as these aren't one size fits all.  
+In our example we are simply turning root logins back on so as not to break the lab environment. 
 
-
-Now, to setup our openscap policy, we will first make a change to the policy using autotailor. In our case, this is so that we do not break our lab environment, but in the real world this is very relevant, as you will likely need to tailor any compliance policy to your organization's needs.  In our case we are simply turning root logins back on. 
-
-To do this, we will tailor our policy right on our build host.  The autotailor command comes from the openscap-utils package, and requires that the scap-security-guide is also installed.  We have done this for you in the lab environment.  
-
-On your build host, Run the following:
+To do this, we will tailor our policy right on our build host.
+Tailoring files are a common format and as long as they are built against the right policy, they can be created on any host.
+The `autotailor` command comes from the `openscap-utils` package, and requires that the `scap-security-guide` is also installed.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login --new-profile-id cis_server_l1_customized --output cis_server_l1_customized.xml /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml cis_server_l1 
+autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login \ <.>
+  --new-profile-id cis_server_l1_customized \ <.> 
+  --output cis_server_l1_customized.xml \ <.>
+  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml cis_server_l1 <.>
 ----
+<.> The rule to deselect
+<.> The new policy name to use
+<.> The name of the policy file to write
+<.> The original policy to tailor
 
-Then we'll modify our Containerfile, removing the line where we endable just FAPolicyd, and replacing it with an entire policy. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here.  This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
+Then we'll modify our Containerfile, removing the line where we enable FAPolicyd, and replacing it with an oscap policy block. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here.  This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
 
 Open up the Containerfile, and delete this line:
-Delete this:
 ....
 RUN systemctl enable fapolicyd
 ....
 
-And then add the following in its place
+And then add the following in its place.
+We'll use the new `oscap-im` tool to scan and remediate the image at build time.
+This tool is also part of the `openscap-utils` package and is specially designed for operating inside a containerized build.
 
-[source,bash,role="execute",subs=attributes+]
+[source,dockerfile,role="execute",subs=attributes+]
 ----
-ENV profileID=cis_server_l1_customized
+ENV profileID=cis_server_l1_customized <.>
 
 COPY $profileID.xml /tmp/$profileID.xml
-RUN oscap-im --profile $profileID --tailoring-file /tmp/$profileID.xml /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml
+RUN oscap-im --profile $profileID --tailoring-file /tmp/$profileID.xml /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml <.>
 ----
+<.> An environment variable to define the policy to apply
+<.> The new `oscap-im` command using our tailored policy
 
 With that in place, we can build our bootc image again. 
 
@@ -41,7 +53,7 @@ With that in place, we can build our bootc image again.
 ----
 podman build --file Containerfile --tag registry-{guid}.{domain}/base
 ----
-As the bootc image buyilds, you will see output similar to this as the openscap profile is getting applied to the image. 
+As the bootc image builds, you will see output similar to this as the openscap profile is getting applied to the image. 
 ....
 xccdf_org.ssgproject.content_rule_package_aide_installed:pass
 xccdf_org.ssgproject.content_rule_aide_build_database:fail
@@ -61,14 +73,18 @@ After it completes, push the new image.
 podman push registry-{guid}.{domain}/base
 ----
 
+=== Testing our new security stance
+==== _Click on the tab labeled "Sec SSH session"_ 
 Now, on our vm back over on the Security VM Session tab, we can update, and apply the new image. 
 
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --apply
 ----
+===== _Log back into the VM by clicking the `reconnect` button or the refresh icon in the tab title._
 
-After the reboot, we can validate that our system has had the policy applied, by checking the compliance score via openscap. 
+After the reboot, we're greeted with a new MOTD that we didn't create.
+We can validate that our system has had the policy applied, by checking the compliance score via openscap. 
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -82,5 +98,11 @@ You should see a score in the 90's like the output below:
 ....
     <score system="urn:xccdf:scoring:default" maximum="100.000000">92.530121</score>
 ....
+
+What about FAPolicyD?
+[source,bash,role="execute",subs=attributes+]
+----
+sudo fapolicyd-cli -l
+----
 
 Great!  Now we have an immutable OS, that matches our standards.  But, what do we do about that inevitable drift?  In the next module we'll adress that. 

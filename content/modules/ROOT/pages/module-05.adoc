@@ -2,8 +2,13 @@
 This is a decent start for our gold image, but let's address a few more topics.
 Our goals are to centralize our configuration and build processes while making it easier to work acrross teams.
 
-_Before proceeding, make sure you have changed back to the tab labeled "Build host'._
+The use of application containers have provided some good practices based on real world experience.
+We'll explore a few of these in context for image mode configurations.
 
+== Containerfile idioms
+==== _Before proceeding, make sure you have changed back to the tab labeled "Build host'._
+
+=== Additional labels and metadata
 One of the benefits of containerized builds is extra metadata available by default.
 Instead of relying on naming conventions or `bootc status` output, we can add information to the images via labels.
 
@@ -27,6 +32,7 @@ MAINTAINER sysadmins@example.com
 LABEL vendor="Example Corp" 
 ----
 
+=== Git repository layout
 We briefly mentioned that responsibility for `/etc` is split between the image and the running host.
 This allows for centralizing common configs in our builds, while allowing for runtime flexibility.
 Most of the image controlled system software is in `/usr` making it a good location for things we absolutely want controlled via the image only.
@@ -99,6 +105,7 @@ COPY etc/ /etc
 COPY usr/ /usr
 ----
 
+=== Managing updates
 We briefly mentioned that by default, there's a timer active that will apply updates to an image mode host.
 In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
 One simple way to disable the timer is to mask the service with `systemd`. 
@@ -121,6 +128,7 @@ podman push registry-{guid}.{domain}/base
 ----
 
 ==== Test the update on the VM
+==== _Click on the tab labeled "Ops SSH session"_ 
 
 Previously, we staged the update and then manually rebooted the system into the staged image.
 This provides a lot of control to update before a maintenance window and apply the update when downtime can be negotiated.
@@ -130,10 +138,10 @@ The `bootc` commands can also reboot immediately on success when given the `--ap
 sudo bootc update --apply
 ----
 
-Log back into the VM by clicking the `reconnect` button or the refresh icon in the tab title.
+===== _Log back into the VM by clicking the `reconnect` button or the refresh icon in the tab title._
 
 There are other options for `upgrade` to help with planning changes to the hosts, like `--check`.
-This will compare the image in the registry with what's on the host.
+This will compare the image in the registry with what's on the host, useful to double check you've published an update.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc upgrade --check
