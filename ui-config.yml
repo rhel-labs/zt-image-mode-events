@@ -51,10 +51,25 @@ antora:
     - name: "module-15"
       label: "Rechunk"
       solveButton: false
-
 tabs:
   - name: "Build host terminal"
     url: /wetty/ssh/root
-  - name: ">_ Rechunk test host"
-    url: /wetty_imrhel/ssh/root
+  - name: ">_ Ops SSH session"
+    url: /wetty_bootc_vm/ssh/root
+    modules:
+      - module-02
+      - module-03
+      - module-04
+      - module-05
+      - module-10
+      - module-15
+  - name: ">_ Sec SSH session"
+    url: /wetty_security_vm/ssh/root
+    modules:
+      - module-06
+      - module-07
+      - module-08
+      - module-11
+      - module-12
+      - module-13
       - module-15

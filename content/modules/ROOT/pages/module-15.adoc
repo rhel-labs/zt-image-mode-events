@@ -18,10 +18,14 @@ Rechunking is also a function of `bootc-base-imagectl`.
 This takes an existing image, and creates a new ostree commit that is more optimized for `bootc` operations.
 [source,bash,role="execute",subs=attributes+]
 ----
-podman run --rm --privileged -v /var/lib/containers:/var/lib/containers registry.redhat.io/rhel10/rhel-bootc:10.1 /usr/libexec/bootc-base-imagectl rechunk \
-registry-{guid}.{domain}/httpd:base \
-registry-{guid}.{domain}/httpd:rechunked
+podman run --rm --privileged -v /var/lib/containers:/var/lib/containers \
+registry.redhat.io/rhel10/rhel-bootc:10.1 \
+/usr/libexec/bootc-base-imagectl rechunk \
+registry-{guid}.{domain}/httpd:base \ <.>
+registry-{guid}.{domain}/httpd:rechunked <.>
 ----
+<.> starting image to optimize
+<.> target image name
 
 === Rechunking in practice
 
@@ -31,11 +35,11 @@ First examine the two for size
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman images httpd
+podman images registry-{guid}.{domain}/httpd
 ----
 
 There is a slight difference in image size, so something internal has changed.
-The primary manifestation is how images are pull over the wire to the host.
+The primary manifestation is how images are pulled over the wire to the host.
 
 Push both images to the registry.
 
@@ -47,23 +51,62 @@ registry-{guid}.{domain}/httpd:rechunked
 
 === Test an update
 
-We have a clean image mode host that we'll use to test the update. 
-Like in an earlier exercise, we'll switch the host to the base image, then rollback to observe the switch the rechunked version.
+To test this change, we need to get 2 machines in the same state.
+We'll do this by recreating the VMs from the same starting disk.
 
-===== _Switch to the tab labeled "Rechunk target"_
-
-
-
+In the home directory we should still have the QCOW disk we created for the Security VM.
 [source,bash,role="execute",subs=attributes+]
 ----
-time bootc switch registry-{guid}.{domain}/httpd:base
+cd ~
 ----
 
 [source,bash,role="execute",subs=attributes+]
 ----
-bootc rollback --apply
+file qcow2/disk.qcow2
 ----
 
+Shutdown the VMs so we can replace their disks.
+
+[source,bash,role="execute",subs=attributes+]
+----
+virsh destroy bootc-vm
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+virsh destroy security-vm
+----
+
+Copy the source disk to each of the expected locations
+[source,bash,role="execute",subs=attributes+]
+----
+cp qcow2/disk.qcow2 /var/lib/libvirt/images/bootc-vm.qcow2
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+cp qcow2/disk.qcow2 /var/lib/libvirt/images/security-vm.qcow2
+----
+
+Start both VMs
+[source,bash,role="execute",subs=attributes+]
+----
+virsh start bootc-vm
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+virsh start security-vm
+----
+
+On Ops VM
+[source,bash,role="execute",subs=attributes+]
+----
+
+bootc switch registry-xrb5w.apps.ocpvdev01.rhdp.net/httpd:base
+----
+
+On Sec VM
 [source,bash,role="execute",subs=attributes+]
 ----
 time bootc switch registry-{guid}.{domain}/httpd:rechunked

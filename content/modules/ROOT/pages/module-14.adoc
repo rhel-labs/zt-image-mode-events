@@ -70,11 +70,21 @@ You can see that seemingly simple builder image does a huge amount of work setti
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman images minimal registry.redhat.io/rhel10/rhel-bootc:10.1 
+podman images minimal 
 ----
 ....
+REPOSITORY         TAG         IMAGE ID      CREATED             SIZE
+localhost/minimal  latest      caba52af4825  About a minute ago  712 MB
 ....
 
+[source,bash,role="execute",subs=attributes+]
+----
+podman images registry.redhat.io/rhel10/rhel-bootc:10.1 
+----
+....
+REPOSITORY                            TAG         IMAGE ID      CREATED       SIZE
+registry.redhat.io/rhel10/rhel-bootc  10.1        592ce49a8928  14 hours ago  1.64 GB
+....
 You can see there's a significant size difference as the _minimal_ manifest only installed about 200 packages.
 The standard RHEL base is about 400.
 
@@ -147,13 +157,15 @@ podman build -t httpd:min -f Containerfile.min
 Compare the sizes of our two httpd images
 [source,bash,role="execute",subs=attributes+]
 ----
-podman images httpd:base httpd:min
+podman images httpd
 ----
 ....
+REPOSITORY       TAG         IMAGE ID      CREATED         SIZE
+localhost/httpd  min         05fd59cc6e7d  11 seconds ago  767 MB
+localhost/httpd  base        7092c8504861  57 seconds ago  1.71 GB
 ....
 
-There's quite a bit of size difference between these images, but we may be missing certain expected functionality.
-
+There's still a size difference between these images, but we may be missing certain expected functionality.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -219,8 +231,7 @@ This could be a viable option depending on the use case.
 podman images httpd
 ----
 ....
-REPOSITORY       TAG         IMAGE ID      CREATED             SIZE
-localhost/httpd  direct      79cdd520320e  About a minute ago  706 MB
-localhost/httpd  min         4de92f83914d  23 minutes ago      767 MB
-localhost/httpd  base        88efe5cd0566  3 hours ago         1.71 GB
+localhost/httpd  direct      861373643716  9 seconds ago  706 MB
+localhost/httpd  min         05fd59cc6e7d  7 minutes ago  767 MB
+localhost/httpd  base        7092c8504861  7 minutes ago  1.71 GB
 ....
