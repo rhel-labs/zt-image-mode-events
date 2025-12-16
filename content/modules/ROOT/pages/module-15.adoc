@@ -4,17 +4,67 @@ Several strategies for increasing the efficiency of updates over the wire are in
 Various states of readiness, rechunking is the latest addition.
 
 [#write-containerfiles]
-== Building from the standard base
+== Optimizing the httpd image
+Let's use the `httpd` image we just created to explore the idea of "rechunking" images.
 
+First, let's re-tag it so we can push it to the registry.
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman tag localhost/httpd:base registry-{guid}.{domain}/httpd:base 
+----
+
+Rechunking is also a function of `bootc-base-imagectl`.
+This takes an existing image, and creates a new ostree commit that is more optimized for `bootc` operations.
+[source,bash,role="execute",subs=attributes+]
+----
 podman run --rm --privileged -v /var/lib/containers:/var/lib/containers registry.redhat.io/rhel10/rhel-bootc:10.1 /usr/libexec/bootc-base-imagectl rechunk \
-registry-{guid}.{domain}/base \
-registry-{guid}.{domain}/base:rechunked
+registry-{guid}.{domain}/httpd:base \
+registry-{guid}.{domain}/httpd:rechunked
+----
 
-Examine the two for size
+=== Rechunking in practice
 
-podman images base base:rechunked
+So how does this "rechunking" manifest?
 
-Use the reinstalled target as "clean" 
-time bootc switch base
-bootc rollback
-time bootc switch base:rechunked
+First examine the two for size
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman images httpd
+----
+
+There is a slight difference in image size, so something internal has changed.
+The primary manifestation is how images are pull over the wire to the host.
+
+Push both images to the registry.
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/httpd:base \
+registry-{guid}.{domain}/httpd:rechunked
+----
+
+=== Test an update
+
+We have a clean image mode host that we'll use to test the update. 
+Like in an earlier exercise, we'll switch the host to the base image, then rollback to observe the switch the rechunked version.
+
+===== _Switch to the tab labeled "Rechunk target"_
+
+
+
+[source,bash,role="execute",subs=attributes+]
+----
+time bootc switch registry-{guid}.{domain}/httpd:base
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+bootc rollback --apply
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+time bootc switch registry-{guid}.{domain}/httpd:rechunked
+----

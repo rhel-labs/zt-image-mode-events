@@ -10,11 +10,14 @@ _Return to the "Build host" and change to a new directory for this exercise_
 cd ~/scratch
 ----
 
-Just like any other container image, bootc images can start from an empty filesystem called a "scratch image". 
-Some use cases may find this provides more control and a smaller end image.
+Just like any other container image, bootc images can start from an empty filesystem called https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/using_image_mode_for_rhel_to_build_deploy_and_manage_operating_systems/generating-a-custom-minimal-base-image[a "scratch image",window=_blank]. 
+Some use cases may find this provides more control over available packages and may provide a smaller end image.
 
 To create an image from scratch, use the Red Hat base as the builder, since the tools needed to create a rootfs that bootc can use are built into `bootc`.
-This is a multi-stage build that takes the components created by the `bootc` tooling as the starting point for the `scratch` image.
+This image will act as a new base image for later builds.
+
+The documentation example is a multi-stage build that takes the components created by the `bootc` tooling as the starting point for the `scratch` image.
+Instead, let's build a miminal base image to compare against the Red Hat base we've been using so far.
 
 Let's explore how that can work by creating a new Containerfile with the following contents.
 
@@ -27,21 +30,15 @@ nano Containerfile.scratch
 Copy the following Containerfile and save it.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-# Begin with a standard bootc base image that is reused as a "builder" for the custom image.
 FROM registry.redhat.io/rhel10/rhel-bootc:10.1 AS builder
 # Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
-RUN /usr/libexec/bootc-base-imagectl build-rootfs --manifest=minimal /target-rootfs <.>
+RUN /usr/libexec/bootc-base-imagectl build-rootfs \
+--install subscription-manager \
+--manifest=minimal /target-rootfs <.>
 
 # Create a new, empty image from scratch.
 FROM scratch <.>
-COPY --from=builder /target-rootfs/ / <.>
-
-RUN <<EORUN <.>
-set -xeuo pipefail
-dnf -y install NetworkManager openssh-server
-dnf clean all
-rm /var/{log,cache,lib}/* -rf
-EORUN
+COPY --from=builder /target-rootfs/ /   <.>
 
 # Define required labels for this bootc image to be recognized as such. <.>
 LABEL containers.bootc 1
@@ -51,12 +48,14 @@ STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]
 
 RUN bootc container lint
+
 ----
 <.> `bootc` creates the image based on the specified manifest
 <.> The special FROM statement that creates an empty image
 <.> Moving the filesystem created in the builder image to the empty target
-<.> Local customizations to the minimal image created as a single layer using a `heredoc`
 <.> Housekeeping to appropriately identitfy this as a `bootc` image to container tools
+
+CAUTION: We've identified a bug in the latest minimal manifest that breaks `dnf` in derived builds, the package installed here and the symlink created later are workarounds until that issue is fixed.
 
 The definitions of base images are part of the https://gitlab.com/fedora/bootc/base-images[upstream project,window=_blank].
 These manifests not only define the starting set of packages installed, but also system configuration for image mode support.
@@ -91,18 +90,27 @@ For simplicity, we'll create a basic webserver image.
 ----
 # Begin with a standard bootc base image 
 FROM registry.redhat.io/rhel10/rhel-bootc:10.1 
-RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 
-RUN dnf install -y httpd
+RUN <<EORUN  <.>
+set -xeuo pipefail
+dnf -y install httpd sudo 
+dnf clean all
+rm /var/{log,cache,lib}/* -rf
+EORUN
+
 RUN systemctl enable httpd
+RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 RUN bootc container lint
+
 ----
+<.> do all of the install and cleanup in a single layer
+
 [source,bash,role="execute",subs=attributes+]
 ----
 podman build -t httpd:base -f Containerfile.std
 ----
 
-Now do the same for the freshly built from scratch image.
+Now do the same for the freshly built minimal base image.
 [source,bash,role="execute",subs=attributes+]
 ----
 nano Containerfile.min
@@ -111,14 +119,26 @@ nano Containerfile.min
 For simplicity, we'll create a basic webserver image.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-# Begin with a standard bootc base image 
-FROM minimal
-RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
+# Begin with a standard bootc base image
+FROM localhost/minimal
 
-RUN dnf install -y httpd
+RUN <<EORUN <.>
+set -xeuo pipefail
+ln -s /run/secrets/etc-pki-entitlement/* /etc/pki/entitlement
+dnf -y install httpd sudo 
+dnf clean all
+rm /var/{log,cache,lib}/* -rf
+EORUN
+
 RUN systemctl enable httpd
+RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 RUN bootc container lint
+
 ----
+<.> do all of the install and cleanup in a single layer
+
+CAUTION: the symlink in the `heredoc` is part of the workaround and should not be needed once the manifest has been corrected, otherwise these two Containerfiles would only differ by the `FROM` definition.
+
 [source,bash,role="execute",subs=attributes+]
 ----
 podman build -t httpd:min -f Containerfile.min
@@ -132,4 +152,75 @@ podman images httpd:base httpd:min
 ....
 ....
 
-Notice that we've saved some space.
+There's quite a bit of size difference between these images, but we may be missing certain expected functionality.
+
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman run --rm -it httpd:base rpm -q openssh
+----
+....
+openssh-9.9p1-11.el10.x86_64
+....
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman run --rm -it httpd:min rpm -q openssh
+----
+....
+package openssh is not installed
+....
+
+The minimal profile is just that, minimal. 
+The end user is responsible for adding packages to satisfy their requirements.
+This smaller size is a trade off for more potential work identifying dependencies.
+
+We could also skip the base image creation and use the minimal manifest directly by passing `--install` to the `bootc-base-imagectl` command.
+Let's build a version of our `httpd` image that way and compare.
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile.direct
+----
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+FROM registry.redhat.io/rhel10/rhel-bootc:10.1 AS builder
+# Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
+RUN /usr/libexec/bootc-base-imagectl build-rootfs \
+--install httpd \
+--install sudo \
+--manifest=minimal /target-rootfs <.>
+
+# Create a new, empty image from scratch.
+FROM scratch <.>
+COPY --from=builder /target-rootfs/ /   <.>
+
+# Define required labels for this bootc image to be recognized as such. <.>
+LABEL containers.bootc 1
+LABEL ostree.bootable 1
+
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]
+
+RUN bootc container lint
+----
+
+Build the new image, again adding the additional capabilities required for the rootfs creation tasks.
+[source,bash,role="execute",subs=attributes+]
+----
+podman build -t httpd:direct -f Containerfile.direct --cap-add=all --security-opt=label=type:container_runtime_t --device /dev/fuse
+----
+
+We've saved some space and don't need to worry about the derived build chain. 
+This could be a viable option depending on the use case.
+[source,bash,role="execute",subs=attributes+]
+----
+podman images httpd
+----
+....
+REPOSITORY       TAG         IMAGE ID      CREATED             SIZE
+localhost/httpd  direct      79cdd520320e  About a minute ago  706 MB
+localhost/httpd  min         4de92f83914d  23 minutes ago      767 MB
+localhost/httpd  base        88efe5cd0566  3 hours ago         1.71 GB
+....
