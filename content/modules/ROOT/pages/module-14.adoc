@@ -30,7 +30,7 @@ nano Containerfile.scratch
 Copy the following Containerfile and save it.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-FROM registry.redhat.io/rhel10/rhel-bootc:10.1 AS builder
+FROM quay.io/fedora/fedora-bootc:latest AS builder
 # Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
 RUN /usr/libexec/bootc-base-imagectl build-rootfs \
 --install subscription-manager \
@@ -79,7 +79,7 @@ localhost/minimal  latest      caba52af4825  About a minute ago  712 MB
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman images registry.redhat.io/rhel10/rhel-bootc:10.1 
+podman images quay.io/fedora/fedora-bootc:latest
 ----
 ....
 REPOSITORY                            TAG         IMAGE ID      CREATED       SIZE
@@ -99,7 +99,7 @@ For simplicity, we'll create a basic webserver image.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Begin with a standard bootc base image 
-FROM registry.redhat.io/rhel10/rhel-bootc:10.1 
+FROM quay.io/fedora/fedora-bootc:latest AS builder
 
 RUN <<EORUN  <.>
 set -xeuo pipefail
@@ -134,7 +134,7 @@ FROM localhost/minimal
 
 RUN <<EORUN <.>
 set -xeuo pipefail
-ln -s /run/secrets/etc-pki-entitlement/* /etc/pki/entitlement
+#ln -s /run/secrets/etc-pki-entitlement/* /etc/pki/entitlement
 dnf -y install httpd sudo 
 dnf clean all
 rm /var/{log,cache,lib}/* -rf
@@ -197,7 +197,7 @@ nano Containerfile.direct
 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-FROM registry.redhat.io/rhel10/rhel-bootc:10.1 AS builder
+FROM registry.redhat.io/rhel10/rhel-bootc:10.1 
 # Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
 RUN /usr/libexec/bootc-base-imagectl build-rootfs \
 --install httpd \

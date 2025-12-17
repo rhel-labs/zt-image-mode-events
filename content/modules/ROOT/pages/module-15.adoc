@@ -14,6 +14,11 @@ First, let's re-tag it so we can push it to the registry.
 podman tag localhost/httpd:base registry-{guid}.{domain}/httpd:base 
 ----
 
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/httpd:base
+----
+
 Rechunking is also a function of `bootc-base-imagectl`.
 This takes an existing image, and creates a new ostree commit that is more optimized for `bootc` operations.
 [source,bash,role="execute",subs=attributes+]
@@ -41,12 +46,11 @@ podman images registry-{guid}.{domain}/httpd
 There is a slight difference in image size, so something internal has changed.
 The primary manifestation is how images are pulled over the wire to the host.
 
-Push both images to the registry.
+Push the rechunked image to the registry.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman push registry-{guid}.{domain}/httpd:base \
-registry-{guid}.{domain}/httpd:rechunked
+podman push registry-{guid}.{domain}/httpd:rechunked
 ----
 
 === Test an update
@@ -65,16 +69,23 @@ cd ~
 file qcow2/disk.qcow2
 ----
 
-Shutdown the VMs so we can replace their disks.
-
+Remove the VMs so we can recreate them from the same source disk
 [source,bash,role="execute",subs=attributes+]
 ----
 virsh destroy bootc-vm
+----
+[source,bash,role="execute",subs=attributes+]
+----
+virsh undefine bootc-vm
 ----
 
 [source,bash,role="execute",subs=attributes+]
 ----
 virsh destroy security-vm
+----
+[source,bash,role="execute",subs=attributes+]
+----
+virsh undefine security-vm
 ----
 
 Copy the source disk to each of the expected locations
@@ -82,10 +93,34 @@ Copy the source disk to each of the expected locations
 ----
 cp qcow2/disk.qcow2 /var/lib/libvirt/images/bootc-vm.qcow2
 ----
-
 [source,bash,role="execute",subs=attributes+]
 ----
 cp qcow2/disk.qcow2 /var/lib/libvirt/images/security-vm.qcow2
+----
+
+Reimport the VMs to make sure we get clean systems
+[source,bash,role="execute",subs=attributes+]
+----
+virt-install --name bootc-vm \
+  --disk /var/lib/libvirt/images/bootc-vm.qcow2 \
+  --import \
+  --memory 4096 \
+  --graphics none \
+  --osinfo rhel10-unknown \
+  --noautoconsole \
+  --noreboot
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+virt-install --name security-vm \
+  --disk /var/lib/libvirt/images/security-vm.qcow2 \
+  --import \
+  --memory 4096 \
+  --graphics none \
+  --osinfo rhel10-unknown \
+  --noautoconsole \
+  --noreboot
 ----
 
 Start both VMs
@@ -99,15 +134,47 @@ virsh start bootc-vm
 virsh start security-vm
 ----
 
-On Ops VM
+On Ops VM apply the standard base
 [source,bash,role="execute",subs=attributes+]
 ----
-
-bootc switch registry-xrb5w.apps.ocpvdev01.rhdp.net/httpd:base
+sudo bootc switch registry-{guid}.{domain}/httpd:base --apply
 ----
 
-On Sec VM
+On Sec VM apply the rechunked base
 [source,bash,role="execute",subs=attributes+]
 ----
-time bootc switch registry-{guid}.{domain}/httpd:rechunked
+sudo bootc switch registry-{guid}.{domain}/httpd:rechunked --apply
+----
+
+On Build host, add a new layer to the Containerfile, build and rechunk again.
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman build -t registry-kf7m4.apps.ocpvdev01.rhdp.net/httpd:base -f Containerfile.std
+---
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/httpd:base
+----
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman run --rm --privileged -v /var/lib/containers:/var/lib/containers \
+registry.redhat.io/rhel10/rhel-bootc:10.1 \
+/usr/libexec/bootc-base-imagectl rechunk \
+registry-{guid}.{domain}/httpd:base \ <.>
+registry-{guid}.{domain}/httpd:rechunked <.>
+----
+
+On Ops VM apply the standard base
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc upgrade
+----
+
+On Sec VM apply the rechunked base
+[source,bash,role="execute",subs=attributes+]
+----
+sudo bootc upgrade
 ----
