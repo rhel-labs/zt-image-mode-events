@@ -15,7 +15,7 @@ Because we will be making significant changes to our system, we are going to sta
 One of the common services the security team uses to meet compliance and security mandteas is FAPolicyD.
 The File Access Policy Daemon is a service that implements application allow-listing.  So let's see what it looks like to simply add it to our `Containerfile`.  
 
-NOTE: We will be adding these changes after the Maintainer metadata line that was added earlier in our Containerfile so, after the "LABEL vendor="Example Corp" line, we'll add the following
+NOTE: We will be adding these changes after the `systemctl mask` line at the end of the exsting file
 
 FAPolicyD is one of the standard tools the security team asked for, including the audit subsystem and SELinux troubleshooting. We'll also install the packages for the SCAP policy tools now since we know that's coming.
 [source,dockerfile,role="execute",subs=attributes+]
@@ -44,7 +44,7 @@ Now, we can build a new disk image, and start our new VM.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo podman run --rm --privileged --security-opt label=type:unconfined_t \
+podman run --rm --privileged --security-opt label=type:unconfined_t \
   --volume ./config.toml:/config.toml \
   --volume /var/lib/containers/storage:/var/lib/containers/storage \
   --volume .:/output \
@@ -81,7 +81,7 @@ virsh start security-vm
 ----
 
 == Testing FAPolicyd
-==== _Click on the tab labeled ">_ Sec SSH session"_ 
+==== _Click on the tab labeled "Sec SSH session"_ 
 
 Our goal here was to deploy fapolicyd, so now that we have, let's see if its working. 
 

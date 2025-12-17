@@ -50,11 +50,18 @@ RUN dnf -y install pcp-zeroconf \
 
 Some tools we need may come from 3rd party repositories, either community or project repos like `EPEL` or repos you maintain for your own applications.
 Repos can be added directly to the image instead of the build host, allowing us better control over software available.
-Install the `EPEL` repo RPM, and 2 additional admin favorites.
+We can even alter the repo file to update mirror lists.
 
+Install the `EPEL` repo RPM, and 2 additional admin favorites.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+
+RUN sed -e '/^metalink=https:\/\/mirrors.fedoraproject.org\/metalink/ s/^/#/' \
+    -e '/^#baseurl=http:/ s/http/https/' \
+    -e '/^#baseurl=https:\/\/download.example/ s/^#//' \
+    -e '/^baseurl=https:\/\/download.example/ s_https://download.example_https://dl.fedoraproject.org_' \
+    -i /etc/yum.repos.d/epel*.repos
 
 RUN dnf -y install btop iftop
 ----

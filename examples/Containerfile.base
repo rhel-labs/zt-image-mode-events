@@ -7,6 +7,12 @@ RUN dnf -y install pcp-zeroconf \
 
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
 
+RUN sed -e '/^metalink=https:\/\/mirrors.fedoraproject.org\/metalink/ s/^/#/' \
+    -e '/^#baseurl=http:/ s/http/https/' \
+    -e '/^#baseurl=https:\/\/download.example/ s/^#//' \
+    -e '/^baseurl=https:\/\/download.example/ s_https://download.example_https://dl.fedoraproject.org_' \
+    -i /etc/yum.repos.d/epel*.repos
+
 RUN dnf -y install btop iftop
 
 # Add image controlled configs
@@ -34,7 +40,5 @@ RUN oscap-im --profile $profileID --tailoring-file /tmp/$profileID.xml /usr/shar
 RUN systemctl enable fapolicyd
 
 # Skip these in first 2 modules
-#Clean up caches in the image and lint the container
-RUN rm /var/{cache,lib}/dnf /var/lib/rhsm /var/cache/ldconfig -rf
 
 RUN bootc container lint

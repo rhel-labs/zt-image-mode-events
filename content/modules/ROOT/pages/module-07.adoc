@@ -28,15 +28,10 @@ autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login 
 
 Then we'll modify our Containerfile, removing the line where we enable FAPolicyd, and replacing it with an oscap policy block. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here.  This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
 
-Open up the Containerfile, and delete this line:
-....
-RUN systemctl enable fapolicyd
-....
-
-And then add the following in its place.
 We'll use the new `oscap-im` tool to scan and remediate the image at build time.
 This tool is also part of the `openscap-utils` package and is specially designed for operating inside a containerized build.
 
+Open up the Containerfile, and then add the following after the `systemctl enable` line.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 ENV profileID=cis_server_l1_customized <.>
@@ -88,7 +83,7 @@ We can validate that our system has had the policy applied, by checking the comp
 
 [source,bash,role="execute",subs=attributes+]
 ----
-oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_server_l1 --results ./results  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml
+sudo oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_server_l1 --results ./results  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml
 ----
 [source,bash,role="execute",subs=attributes+]
 ----

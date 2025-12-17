@@ -20,7 +20,7 @@ Change to the application git repository with the bootc Containerfile, cloned on
 cd ~/bootc-version
 ----
 
-First, let's add linting and then build a fresh copy to test the switch on our own RHEL 9.6 host.
+First, let's add linting and then build a fresh copy to test the switch on our own existing image mode host.
 [source,bash,role="execute",subs=attributes+]
 ----
 nano Containerfile
@@ -134,12 +134,11 @@ Failed Units: 1
 ----
 systemctl status nginx.service --no-pager
 ----
+
 ....
-Nov 17 16:18:10 imrhel systemd[1]: Starting nginx.service - The nginx HTTP and reverse proxy server...
-Nov 17 16:18:10 imrhel nginx[1078]: nginx: [alert] could not open error log file: open() "/var/log/nginx/error.log…irectory)
-Nov 17 16:18:10 imrhel nginx[1078]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-Nov 17 16:18:10 imrhel nginx[1078]: 2025/11/17 16:18:10 [emerg] 1078#1078: mkdir() "/var/lib/nginx/tmp/client_body…irectory)
-Nov 17 16:18:10 imrhel nginx[1078]: nginx: configuration file /etc/nginx/nginx.conf test failed
+nginx[1078]: nginx: [alert] could not open error log file: open() "/var/log/nginx/error.log…irectory)
+nginx[1078]: 2025/11/17 16:18:10 [emerg] 1078#1078: mkdir() "/var/lib/nginx/tmp/client_body…irectory)
+nginx[1078]: nginx: configuration file /etc/nginx/nginx.conf test failed
 ....
 
 Looks the culprit is nginx missing its `/var` file structure but why does that not happen when the developers provision a new machine?
@@ -166,12 +165,12 @@ Upstream packages have been moving to use `systemd tmpfiles` and `systemd sysuse
 The introduction of image mode has put some pressure on this migration, but you can already see the `nginx` package https://src.fedoraproject.org/rpms/nginx/blob/aff374fc9038f31a53370f5779f4d03df8fbbc6d/f/nginx.tmpfiles[already has a fix upstream.,window=_blank]
 
 == Workaround with tmpfiles.d
-_Switch to the tab labeled "Build host terminal"_
+===== _Switch to the tab labeled "Build host terminal"_
 
 Let's use the upstream fix to create a local version of nginx.tmpfiles in the system location. 
 This means when the new RPM lands, we can just remove this from our Containerfile and the system will continue to work as expected.
 
-Let's add a `heredoc` just before the linter in the Containerfile to create the new file for testing.
+Let's add a `heredoc` just *before* the linter in the Containerfile to create the new file for testing.
 [source,bash,role="execute",subs=attributes+]
 ----
 nano Containerfile
@@ -188,6 +187,15 @@ EORUN
 
 Using the `heredoc` let's us run multiple commands as a single layer and can be very handy.
 Since this is executed during a build like any other shell `heredoc`, we need to use some `set` magic to make sure a failure here stops the build.
+
+We can also clean up a few of those other errors by removing the workfing caches from `/var` for things like `dnf` since these won't be needed after build.
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+RUN rm /var/{cache,lib}/dnf /var/lib/rhsm /var/cache/ldconfig -rf
+----
+
+Save the file and move on.
 
 To test that `systemd` will handle the directory creation on a switch and let the app now start, we'll build this image with a new tag.
 

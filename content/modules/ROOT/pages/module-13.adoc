@@ -20,7 +20,7 @@ cd ~
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano usr/lib/bootc/kargs.d/console_kargs.toml
+nano usr/lib/bootc/kargs.d/05-cloud-kargs.toml
 ----
 
 Remove the first "console" argument in the list.
@@ -166,6 +166,18 @@ Our change was to the kernel command line options which can only be affected by 
 ----
 sudo bootc status -v
 ----
+....
+  Staged image: registry-m4fv6.apps.ocpvdev01.rhdp.net/app-test:v2
+        Digest: sha256:ec45f16e4201bd0cd771ef2e7783c3995a3e839c6c98a926efe2b4096da9236f (amd64)
+       Version: 10.1 (2025-12-17T05:44:27Z)
+     StateRoot: default
+ Deploy serial: 0
+        Staged: yes
+        Commit: 3583442881f2fe5a8fa942800812d2a4e1f4057f3f67cbad97c845b8cee0a12e
+   Soft-reboot: no
+....
+
+Notice the `Digest` of the staged image matches the output of our update command, but the `Soft-reboot` is set to `no` unlike the other images.
 The staging of the update was successful however and we can simply reboot. 
 The only thing we couldn't do was the soft relaunch of userspace. 
 The atomic nature of the updates let's us try to soft-reboot all the time and be notified when a hard reboot is required.

@@ -143,6 +143,8 @@ Once the script detects SSH is running, you should be automatically logged in as
 [core@localhost ~]$
 ....
 
+TIP: If you're prompted for a password instead of seeing the prompt, use the password from your blueprint. Once logged in, double check the authorized_keys file matches the ssh key on the build host.
+
 Let's test one of the packages installed from `EPEL` during the build process.
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -237,6 +239,16 @@ status:
 Not only do we get detailed information, it's categorized a little differently.
 You can see where fields from the `--verbose` flag line up against internal structures like image information versus ostree internals. 
 
+One quick way to tell if a system is using `ostree` generally is the presence of a data file in the `/run` filesystem.
+Package mode hosts don't need this marker.
+[source,bash,role="execute",subs=attributes+]
+----
+file /run/ostree-booted
+----
+....
+/run/ostree-booted: data
+....
+
 For other ways, we can look at how the system was started, let's look at kernel command line.
 
 [source,bash,role="execute",subs=attributes+]
@@ -270,6 +282,4 @@ tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
 Skipping the runtime system directories, rather than the usual layout, you'll notice that our root filesystem is an overlay and `/sysroot` looks like where most of the storage is used. 
 You can also check the output of `ls -l /` and notice that there are a lot of symlinks where you might expect directories or filesystems.  i
 This is a key difference that is tied to how updates, rollbacks, and software management works on image mode hosts.  We'll explore this in a later exercise.
-
-_Before proceeding, make sure you have changed back to the tab labeled "Build host'._
 

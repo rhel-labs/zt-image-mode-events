@@ -34,13 +34,13 @@ Operation aborted.
 ....
 
 There is a special flag that tells `dnf` to install a package on an image mode host.
-This creates a new temporary overlay filesystem to make a writable `/usr` so `dnf` can make changes to the RPM database and install the binaries in the standard locations
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo dnf -y install --transient netcat
 ----
 Now you can reverse-shell all day long if you'd like. 
 
+This creates a new temporary overlay filesystem to make a writable `/usr` so `dnf` can make changes to the RPM database and install the binaries in the standard locations
 [source,bash,role="execute",subs=attributes+]
 ----
 df -Th | grep -v /run
@@ -105,9 +105,8 @@ tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
 
 This can be useful for all sorts of tools that are only temporarily or sporadically needed for troubleshooting or other reaons, like security scans.
 
-We'll continue the troubleshooting theme in the next section, looking at the developer's recent image mode Containerfile.
-
 == Core principles
 Centralizing package control at the image layer is useful, but sometimes local changes are needed.
 Image mode provides unique ways to temporarily provide packages or other local changes.
 
+We'll continue the troubleshooting theme in the next section, looking at the developer's recent image mode Containerfile.

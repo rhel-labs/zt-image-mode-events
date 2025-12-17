@@ -78,6 +78,8 @@ RUN <<EORUN # <4>
     echo "d /var/log/nginx     711 root  root -" >> /usr/lib/tmpfiles.d/nginx.conf
 EORUN
 
+RUN rm /var/{cache,lib}/dnf /var/lib/rhsm /var/cache/ldconfig -rf
+
 RUN bootc container lint
 ----
 <1> Change to the secured baseline
@@ -153,7 +155,7 @@ NOTE: The URL will automatically redirect to the new host in the lab configurati
 
 The app is not reachable, so something changed with the new baseline.
 
-The CIS profile turned on the firewall which wasn't configured in the original developer image.
+The CIS profile https://complianceascode.github.io/content-pages/guides/ssg-rhel10-guide-cis_server_l1.html#xccdf_org.ssgproject.content_rule_service_firewalld_enabled[turned on the firewall,window=_blank] which wasn't configured in the original developer image.
 Check if `http` is in the allowed services list.
 
 [source,bash,role="execute",subs=attributes+]
@@ -167,7 +169,7 @@ Let's add it here and re-test to see if that fixes the issue.
 ----
 sudo firewall-cmd --add-service http
 ----
-Is the app http://app-{guid}.{domain}/[up and running?,window=_blank]
+Is the app http://hostinfo-{guid}.{domain}/[up and running?,window=_blank]
 
 OK, all good now but we'll need to handle that in the new derived build.
 
@@ -207,9 +209,9 @@ Make sure you're in the git repository for the application.
 cd ~/bootc-version
 ----
 
+=== 0rganizing the repo
 There are 3 kinds of files the developers created: the app, the system configs, and the build configs. 
 Let's create some directories that match those types.
-
 
 Let's move everything into the new `/app` directory and rearrange from there.
 [source,bash,role="execute",subs=attributes+]
@@ -289,6 +291,8 @@ The concept is that for any one "final artifact", be that standard baseline or p
 This may vary from how you manage configurations today with tools that might use a modular approach to create automation, like anisble playbooks.
 Since Containerfiles aren't particularly modular, we're following a pattern from the developers of one app per repo.
 
+=== Updateing the Containerfile
+
 We'll make a series of edits to the Containerfile to incorporate all of our changes.
 
 TIP: If you want a reference, there's a sample for the final layout of the Containerfile in `~/examples/Containerfile.app_final`
@@ -342,9 +346,21 @@ Add this line after the `pip3 install` line
 RUN firewall-offline-cmd -s http
 ----
 
-Finally, remove the `heredoc` near the end of the file we created for testing the `nginx` workaround and save the file.
+Finally, *remove the `heredoc` near the end of the file* we created for testing the `nginx` workaround and save the file.
 The new configuration file you just created will serve the same purpose.
 
+The end of the Containerfile should look like this:
+
+[source,dockerfile]
+----
+# Enable our application services
+RUN systemctl enable nginx.service
+RUN systemctl enable info-app.service
+
+RUN rm /var/{cache,lib}/dnf /var/lib/rhsm /var/cache/ldconfig -rf
+
+RUN bootc container lint
+----
 Now you're ready to build and push this version of the application.
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -357,7 +373,7 @@ podman push registry-{guid}.{domain}/app-test:v2
 
 === Soft versus hard reboots
 
-Having a serial console makes the next test more intersting, and luckily we can get one on to our virtual machine.
+Having a serial console makes the next test more intersting, and luckily we can get one to our virtual machine.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -390,7 +406,7 @@ Not only was it quicker, but after `systemd` shut the system down, we never got 
 To exit the `virsh console` hit `Ctrl+]`
 [source,bash,role="execute",subs=attributes+]
 ----
-C^]
+^]
 ----
 
 ==== _Switch to the "Sec SSH session" tab_

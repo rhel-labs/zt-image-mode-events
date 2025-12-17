@@ -98,7 +98,7 @@ We'll take a page from application container design and use the `COPY` directive
 Each directive in the Containerfile adds a new layer to the resulting image.
 Understanding layering will help design images that make the most efficient use of the local build cache and network updates.
 
-Replace the individual file COPY lines with these two lines to copy our new directories to the final host locations. 
+Replace the 3 individual file COPY lines with these two lines to copy our new directories to the final host locations. 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 COPY etc/ /etc
@@ -153,4 +153,5 @@ No changes in: docker://registry-mjghb.apps.ocpvdev01.rhdp.net/base
 == Core principles
 In this exercise we focused on making some idomatic changes to the Containerfile and exploring how image mode hosts handle files. 
 We looked at how the build files may differ from the collection of automation and files for a package mode host.
+
 We've satisfied the basic needs of the operations team, in the next section we'll tackle the security requiments and dig deeper into some of these topics.
