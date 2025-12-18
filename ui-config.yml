@@ -39,9 +39,6 @@ antora:
     - name: "module-13"
       label: "Derived builds and updating the chain"
       solveButton: false
-    - name: "module-drivers"
-      label: "Platform targets"
-      solveButton: false
     - name: "module-14"
       label: "Extra credit module: Scratch builds"
       solveButton: false
