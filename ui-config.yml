@@ -40,9 +40,8 @@ antora:
       label: "Derived builds and updating the chain"
       solveButton: false
     - name: "module-14"
-      label: "Extra RH1 module: Scratch builds and rechunking"
+      label: "Extra credit module: Scratch builds"
       solveButton: false
-
 tabs:
   - name: "Build host terminal"
     url: /wetty/ssh/root
@@ -54,7 +53,6 @@ tabs:
       - module-04
       - module-05
       - module-10
-      - module-14
   - name: ">_ Sec SSH session"
     url: /wetty_security_vm/ssh/root
     modules:
@@ -64,4 +62,3 @@ tabs:
       - module-11
       - module-12
       - module-13
-      - module-14

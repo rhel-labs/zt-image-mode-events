@@ -21,6 +21,7 @@ EOF
 # Pull the needed images to minimize waiting during the lab
 BOOTC_RHEL_VER=10.1
 podman pull registry.redhat.io/rhel10/rhel-bootc:$BOOTC_RHEL_VER registry.redhat.io/rhel10/bootc-image-builder:$BOOTC_RHEL_VER
+podman pull quay.io/fedora/fedora-bootc:latest
 
 # Remove pull credentials
 # rm ~/.config/containers/auth.json
@@ -137,3 +138,5 @@ if [ -d $TMPDIR/${EXAMPLE} ]; then
     mv $TMPDIR/${EXAMPLE} ${EXAMPLE}
 fi
 rm -rf $TMPDIR
+
+mkdir ~/scratch
