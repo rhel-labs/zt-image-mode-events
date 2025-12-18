@@ -53,10 +53,6 @@ RUN bootc container lint
 <.> Moving the filesystem created in the builder image to the empty target
 <.> Housekeeping to appropriately identitfy this as a `bootc` image to container tools
 
-
-The definitions of base images are part of the https://gitlab.com/fedora/bootc/base-images[upstream project,window=_blank].
-These manifests not only define the starting set of packages installed, but also system configuration for image mode support.
-
 Similar to `bootc-image-builder`, to build a `scratch` image with `podman` we need to add additional capabilities and devices to the build, even as root.
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -64,6 +60,9 @@ podman build -t minimal -f Containerfile.scratch --cap-add=all --security-opt=la
 ----
 
 You can see that seemingly simple builder image does a huge amount of work setting up the base filesystem.
+
+The definitions of base images are part of the https://gitlab.com/fedora/bootc/base-images[upstream project,window=_blank].
+These manifests not only define the starting set of packages installed, but also system configuration for image mode support.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -118,17 +117,17 @@ Now do the same for the freshly built minimal base image.
 nano Containerfile.min
 ----
 
-For simplicity, we'll create a basic webserver image.
+Same contents just a new source image.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-# Begin with a standard bootc base image
+# Change to the new minimal profile base
 FROM localhost/minimal
 
 RUN dnf -y install httpd sudo
 RUN dnf clean all
 RUN rm /var/{log,cache,lib}/* -rf
 
-RUN systemctl enable httpddnf group list
+RUN systemctl enable httpd
 RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 RUN bootc container lint
 ----
@@ -211,8 +210,8 @@ Build the new image, again adding the additional capabilities required for the r
 podman build -t httpd:direct -f Containerfile.direct --cap-add=all --security-opt=label=type:container_runtime_t --device /dev/fuse
 ----
 
-We've saved some space and don't need to worry about the derived build chain. 
-This could be a viable option depending on the use case.
+We've saved some space and don't need to worry about the derived build chain.
+However we're not necessarily picking up dependencies for installed packages, and we need to learn a new syntax.
 [source,bash,role="execute",subs=attributes+]
 ----
 podman images httpd
@@ -222,3 +221,6 @@ localhost/httpd  direct      6fba52c29a66  21 seconds ago  750 MB
 localhost/httpd  min         cd888ed9a49f  12 minutes ago  941 MB
 localhost/httpd  base        3e96d3cf1e3c  14 minutes ago  2.03 GB
 ....
+
+All of these options can be useful in the right use case, but the tradeoffs between control and usability need to be considered.
+Not only for the build itself, but for possible downstream images, running hosts, and other teams who need to understand how to correctly use these images.

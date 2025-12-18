@@ -18,6 +18,11 @@ For this example, we're going to create a particular image that will have a fair
 This is a stand-in for real world situations to demonstrate the effects.
 We're sticking with Fedora in this example as well, since Red Hat bootc base images are rechunked before publishing.
 
+Return to the home directory to for this exercise
+[source,bash,role="execute",subs=attributes+]
+----
+cd ~
+----
 [source,bash,role="execute",subs=attributes+]
 ----
 nano Containerfile.mess
@@ -40,6 +45,12 @@ RUN bootc container lint
 [source,bash,role="execute",subs=attributes+]
 ----
 podman build -t registry-{guid}.{domain}/mess -f Containerfile.mess
+----
+
+Push the control image to the registry.
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/mess
 ----
 
 Rechunking is also a function of `bootc-base-imagectl`.
@@ -83,11 +94,6 @@ To test this change, we need to get 2 machines in the same state.
 We'll do this by recreating the VMs from the same starting disk.
 
 In the home directory we should still have the QCOW disk we created for the Security VM.
-[source,bash,role="execute",subs=attributes+]
-----
-cd ~
-----
-
 [source,bash,role="execute",subs=attributes+]
 ----
 file qcow2/disk.qcow2
@@ -164,7 +170,7 @@ On Ops VM apply the standard image
 sudo bootc switch registry-{guid}.{domain}/mess:latest
 ----
 ....
-Fetching layers ██████████████████░░ 67/71
+Fetching layers ██████████████████░░ 67/74
 Fetched layers: 1.46 GiB in 85 seconds (17.58 MiB/s)                                         
 ....
 On Sec VM apply the rechunked image
@@ -174,12 +180,16 @@ sudo bootc switch registry-{guid}.{domain}/mess:rechunked
 ----
 ....
 Fetching layers ██████████████████░░ 60/65 
+ └ Fetching ███████░░░░░░░░░░░░░ 13.69 MiB/35.57 MiB (12.83 MiB/s) ostree chunk 7c8a4f6a342beffcf4018              
 Fetched layers: 1.36 GiB in 71 seconds (19.47 MiB/s)
 ....
 
 The rechunked image had fewer layers which accounted for the smaller size. 
+Also notice that the `bootc` output on the Sec VM specifies ostree chunk IDs instead of layer ID.
 Rechunking provided a small but tangible improvement in our MacGuffin situation.
 In real world scenarios involving bound container images, this would be more evident.
+Reboot both VMs to apply the change and switch back to the build host.
+
 
 On Build host, add a new layer to the Containerfile before the linter run, build and rechunk again.
 
@@ -214,11 +224,20 @@ registry-{guid}.{domain}/mess:rechunked <.>
 ----
 Notice that the rechunker detected the target was already chunked.
 
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/mess:rechunked
+----
+
 On Ops VM apply the upgrade to the standard image
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc upgrade
 ----
+....
+layers already present: 74; layers needed: 2 (5.8 kB)
+Fetched layers: 5.63 KiB in 3 se⠁ Deploying
+....
 
 On Sec VM apply the rechunked upgrade
 [source,bash,role="execute",subs=attributes+]
