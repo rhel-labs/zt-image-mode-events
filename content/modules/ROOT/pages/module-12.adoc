@@ -7,6 +7,7 @@ In this lab, we'll take a pattern from the application container world to move t
 
 [#write-containerfiles]
 == Using multi-stage builds
+==== _Click on the tab labeled "Build host"_ 
 
 One common pattern in container builds is offloading the creation of binary components that need to be generated at build time, but don't need to carry all of the dependencies into the final image. 
 The OCI specification allows for multiple image and assoociated actions to be defined in a single Containerfile.
@@ -15,7 +16,7 @@ This is refered to as a multi-stage build and can be used to separate portions o
 Let's explore how that can work by looking at the SELinux module creation in the Containerfile.
 
 Here's the block in the Containerfile that builds and implements the module:
-[source,dockerfile,role="execute",subs=attributes+]
+[source,dockerfile}
 ----
 # Ensure nginx can talk to gunicorn
 WORKDIR /app # <.>
@@ -31,7 +32,7 @@ RUN semanage fcontext -a -t httpd_var_run_t /run/flask-app
 <.> Other work needed to make things take effect
 
 The `WORKDIR` directive is what's creating the intermedite build files inside the image.
-The `WORKDIR` target (`/app`) is essentially a `cd` inside the image filesystem, not the build host.
+The `WORKDIR` target (`/app`) is essentially a `cd` inside the *image filesystem*, not the build host.
 
 Let's rearrange the work for this module to use a multi-stage build and not carry around extra files in the application directory.
 [source,bash,role="execute",subs=attributes+]
@@ -42,7 +43,8 @@ nano Containerfile
 Each stage is defined by a new `FROM` line and can use any image needed.
 What makes them particularly useful is the ability to selectively copy from one stage into another, leaving behind everything else.
 
-At the top of the Containerfile, add the following block that has the build lines for the SELinux module:
+At the top of the Containerfile, add the following block that has the build lines for the SELinux module.
+This defines the first stage of our new build process.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 FROM registry.redhat.io/rhel10/rhel-bootc:10.1 AS policy # <.>
@@ -64,7 +66,7 @@ FROM registry-{guid}.{domain}/base AS host <.>
 ----
 <.> name our application definition stage
 
-Finally, replace the old block with a copy from the `policy` stage
+Finally, replace the old block with this one that copies from the `policy` stage
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Deploy the binary SELinux policy and update the labeling
@@ -107,9 +109,18 @@ Trying to pull registry-j475j.apps.ocpvdev01.rhdp.net/base:latest...
 podman push registry-{guid}.{domain}/app-test:v2
 ----
 
-_Switch to the "Security SSH session" tab to test the latest build of the image._
+==== _Switch to the "Security SSH session" tab to test the latest build of the image._
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --soft-reboot=required --apply
 ----
+
+As a final sanity check, is the app http://hostinfo-{guid}.{domain}/[up and running?,window=_blank]
+
+We'll continue the exploration of derived builds and reboots in the next exercise.
+
+== Core principles
+We've addressed creating images and hosts that are based on other images, allowing standard operating environments to be created and maintained centrally and used simply by other teams.
+We looked at how to separate build requirements from runtime requirements in our Containerfile.
+We also looked at different ways reboots can affect hosts.
 

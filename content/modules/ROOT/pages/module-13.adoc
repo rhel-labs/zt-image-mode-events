@@ -8,6 +8,7 @@ In this lab we'll explore this as we expand on the idea of standardized builds a
 
 [#write-containerfiles]
 == Updating the base 
+==== _Click on the tab labeled "Build host"_ 
 
 A sharp eyed junior noticed that one of the console arguments we passed is already applied by `bootc-image-builder`.
 On the build host, let's update the config file and remove the duplicate `tty0` entry.
@@ -19,7 +20,7 @@ cd ~
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano usr/lib/bootc/kargs.d/console_kargs.toml
+nano usr/lib/bootc/kargs.d/05-cloud-kargs.toml
 ----
 
 Remove the first "console" argument in the list.
@@ -103,7 +104,7 @@ skopeo list-tags  docker://registry-{guid}.{domain}/base
 ....
 This may seem like a hassle, which is where the second method enters the picture: processes like GitOps based automation.
 Image updates in a registry and providing an updated Containerfile is something developers use tools like `renovatebot` and `dependabot` to track.
-These tools will allow you to track static tags like `10.1-` for full control over when updates are applied, but still make updates easier by eliminating the toil of tracking and updating the tag names.
+These tools will allow you to track static tags like `10.1-1763458003` for full control over when updates are applied, but still make updates easier by eliminating the toil of tracking and updating the tag names.
 The full scope of a GitOps environment is out of the scope of this lab, however you can get more details from https://www.redhat.com/en/blog/jumpstart-gitops-image-mode[our introductory blog post ,window=_blank].
 
 Let's update the application Containerfile to track the new `prod` stable tag.
@@ -138,7 +139,11 @@ And of course push it to the local registry:
 ----
 podman push registry-{guid}.{domain}/app-test:v2
 ----
-On Security VM:
+
+=== Test our chained rebuild
+==== _Switch to the "Sec SSH session" tab_
+
+Let's apply our latest image update using our new soft reboot flag.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update --soft-reboot=required --apply
@@ -155,13 +160,41 @@ Removed layers:   16    Size: 122.4 MB
 Added layers:     16    Size: 122.4 MB
 error: Upgrading: Handling staged soft reboot: Handling soft reboot: Soft reboot was required but staged deployment is not soft-reboot capable
 ....
-
-We made a change that can only be affected by a full reboot, so `soft-reboot` will error.
+Our change was to the kernel command line options which can only be affected by a full reboot, so `soft-reboot` will error.
 
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status -v
 ----
+....
+  Staged image: registry-m4fv6.apps.ocpvdev01.rhdp.net/app-test:v2
+        Digest: sha256:ec45f16e4201bd0cd771ef2e7783c3995a3e839c6c98a926efe2b4096da9236f (amd64)
+       Version: 10.1 (2025-12-17T05:44:27Z)
+     StateRoot: default
+ Deploy serial: 0
+        Staged: yes
+        Commit: 3583442881f2fe5a8fa942800812d2a4e1f4057f3f67cbad97c845b8cee0a12e
+   Soft-reboot: no
+....
+
+Notice the `Digest` of the staged image matches the output of our update command, but the `Soft-reboot` is set to `no` unlike the other images.
 The staging of the update was successful however and we can simply reboot. 
 The only thing we couldn't do was the soft relaunch of userspace. 
 The atomic nature of the updates let's us try to soft-reboot all the time and be notified when a hard reboot is required.
+
+== Core principles
+Tags and other metadata are useful for humans to keep track of what images are in use and how they should be used.
+Derived builds make for smaller, more targeted Containerfile definitions but can introduce overhead best suited for automated builds.
+
+
+You can reboot the host and check on the app if you like, but this brings us to the end of today's exploration of image mode.
+Over the course of these exercises, you've:
+
+* created an image that has needed customizations to integrate with the standard management tools 
+* applied compliance policy and security tools
+* considered transient versus permanent packages
+* derived an application image from a baseline
+* created a multi-stage build to keep build files from final images
+
+all while exploring the new tools and design that make image mode hosts unique.
+We hope what you've learned here today helps you adapt image mode for your own environment and begin deploying image mode hosts in your fleet.

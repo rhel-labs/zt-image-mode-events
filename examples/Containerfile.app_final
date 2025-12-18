@@ -45,5 +45,8 @@ RUN systemctl enable info-app.service
 # firewall turned on by CIS policy
 RUN firewall-offline-cmd -s http 
 
+#Clean up caches in the image and lint the container
+RUN rm /var/{cache,lib}/dnf /var/lib/rhsm /var/cache/ldconfig -rf
+
 # Linting will provide hints and improvements in addtion to catching issues
 RUN bootc container lint
