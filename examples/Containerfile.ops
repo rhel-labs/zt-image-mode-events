@@ -11,7 +11,7 @@ RUN dnf -y install btop iftop
 
 # Add image controlled configs
 # COPY 10-wheel /etc/sudoers.d/wheel
-# COPY console_kargs.conf /usr/lib/bootc/kargs.d/05-cloud-kargs.toml
+# COPY console_kargs.toml /usr/lib/bootc/kargs.d/05-cloud-kargs.toml
 # COPY auth.json /etc/ostree/auth.json
 ADD etc/ /etc
 ADD usr/ /usr

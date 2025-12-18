@@ -19,7 +19,7 @@ This image will act as a new base image for later builds.
 The documentation example is a multi-stage build that takes the components created by the `bootc` tooling as the starting point for the `scratch` image.
 Instead, let's build a miminal base image to compare against the Red Hat base we've been using so far.
 
-Let's explore how that can work by creating a new Containerfile with the following contents.
+CAUTION: We've identified a bug in the latest minimal manifest that breaks `subscription-manager` using host entitlements in a containerized build. A workaround at the time of writing was only show effective for hosts using the CDN not Satellite, which is in use in this environment. For that reason, we'll use Fedora for this and following exercises.
 
 We provide a minimal manifest that has even fewer packages selected. 
 [source,bash,role="execute",subs=attributes+]
@@ -32,9 +32,7 @@ Copy the following Containerfile and save it.
 ----
 FROM quay.io/fedora/fedora-bootc:latest AS builder
 # Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
-RUN /usr/libexec/bootc-base-imagectl build-rootfs \
---install subscription-manager \
---manifest=minimal /target-rootfs <.>
+RUN /usr/libexec/bootc-base-imagectl build-rootfs --manifest=minimal /target-rootfs <.>
 
 # Create a new, empty image from scratch.
 FROM scratch <.>
@@ -55,7 +53,6 @@ RUN bootc container lint
 <.> Moving the filesystem created in the builder image to the empty target
 <.> Housekeeping to appropriately identitfy this as a `bootc` image to container tools
 
-CAUTION: We've identified a bug in the latest minimal manifest that breaks `dnf` in derived builds, the package installed here and the symlink created later are workarounds until that issue is fixed.
 
 The definitions of base images are part of the https://gitlab.com/fedora/bootc/base-images[upstream project,window=_blank].
 These manifests not only define the starting set of packages installed, but also system configuration for image mode support.
@@ -74,7 +71,7 @@ podman images minimal
 ----
 ....
 REPOSITORY         TAG         IMAGE ID      CREATED             SIZE
-localhost/minimal  latest      caba52af4825  About a minute ago  712 MB
+localhost/minimal  latest      4fff772a5913  2 minutes ago  738 MB
 ....
 
 [source,bash,role="execute",subs=attributes+]
@@ -83,10 +80,10 @@ podman images quay.io/fedora/fedora-bootc:latest
 ----
 ....
 REPOSITORY                            TAG         IMAGE ID      CREATED       SIZE
-registry.redhat.io/rhel10/rhel-bootc  10.1        592ce49a8928  14 hours ago  1.64 GB
+quay.io/fedora/fedora-bootc  latest      e96ee34fce43  9 hours ago  1.88 GB
 ....
 You can see there's a significant size difference as the _minimal_ manifest only installed about 200 packages.
-The standard RHEL base is about 400.
+The standard Fedora base is about 500.
 
 To see how these compare when put to actual use, let's build two new images from the same Containerfile using each base image.
 
@@ -98,22 +95,17 @@ nano Containerfile.std
 For simplicity, we'll create a basic webserver image.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-# Begin with a standard bootc base image 
-FROM quay.io/fedora/fedora-bootc:latest AS builder
+# Begin with a standard bootc base image
+FROM quay.io/fedora/fedora-bootc:latest
 
-RUN <<EORUN  <.>
-set -xeuo pipefail
-dnf -y install httpd sudo 
-dnf clean all
-rm /var/{log,cache,lib}/* -rf
-EORUN
+RUN dnf -y install httpd sudo
+RUN dnf clean all
+RUN rm /var/{log,cache,lib}/* -rf
 
 RUN systemctl enable httpd
 RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 RUN bootc container lint
-
 ----
-<.> do all of the install and cleanup in a single layer
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -132,22 +124,14 @@ For simplicity, we'll create a basic webserver image.
 # Begin with a standard bootc base image
 FROM localhost/minimal
 
-RUN <<EORUN <.>
-set -xeuo pipefail
-#ln -s /run/secrets/etc-pki-entitlement/* /etc/pki/entitlement
-dnf -y install httpd sudo 
-dnf clean all
-rm /var/{log,cache,lib}/* -rf
-EORUN
+RUN dnf -y install httpd sudo
+RUN dnf clean all
+RUN rm /var/{log,cache,lib}/* -rf
 
-RUN systemctl enable httpd
+RUN systemctl enable httpddnf group list
 RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 RUN bootc container lint
-
 ----
-<.> do all of the install and cleanup in a single layer
-
-CAUTION: the symlink in the `heredoc` is part of the workaround and should not be needed once the manifest has been corrected, otherwise these two Containerfiles would only differ by the `FROM` definition.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -172,7 +156,7 @@ There's still a size difference between these images, but we may be missing cert
 podman run --rm -it httpd:base rpm -q openssh
 ----
 ....
-openssh-9.9p1-11.el10.x86_64
+openssh-10.0p1-6.fc43.x86_64
 ....
 
 [source,bash,role="execute",subs=attributes+]
@@ -197,7 +181,7 @@ nano Containerfile.direct
 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-FROM registry.redhat.io/rhel10/rhel-bootc:10.1 
+FROM quay.io/fedora/fedora-bootc:latest AS builder
 # Build the root file system by using the specified repositories and non-RPM content from the "builder" base image.
 RUN /usr/libexec/bootc-base-imagectl build-rootfs \
 --install httpd \
@@ -207,6 +191,9 @@ RUN /usr/libexec/bootc-base-imagectl build-rootfs \
 # Create a new, empty image from scratch.
 FROM scratch <.>
 COPY --from=builder /target-rootfs/ /   <.>
+
+RUN systemctl enable httpd
+RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 
 # Define required labels for this bootc image to be recognized as such. <.>
 LABEL containers.bootc 1
@@ -231,7 +218,7 @@ This could be a viable option depending on the use case.
 podman images httpd
 ----
 ....
-localhost/httpd  direct      861373643716  9 seconds ago  706 MB
-localhost/httpd  min         05fd59cc6e7d  7 minutes ago  767 MB
-localhost/httpd  base        7092c8504861  7 minutes ago  1.71 GB
+localhost/httpd  direct      6fba52c29a66  21 seconds ago  750 MB
+localhost/httpd  min         cd888ed9a49f  12 minutes ago  941 MB
+localhost/httpd  base        3e96d3cf1e3c  14 minutes ago  2.03 GB
 ....

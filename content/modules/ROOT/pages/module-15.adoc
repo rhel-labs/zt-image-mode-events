@@ -1,33 +1,58 @@
 = Optimizing images 
 
 Several strategies for increasing the efficiency of updates over the wire are in play with image mode. 
-Various states of readiness, rechunking is the latest addition.
+Each of these depend on where the source of inefficiency lies.
+Rechunking address those that come from the build process.
 
 [#write-containerfiles]
-== Optimizing the httpd image
-Let's use the `httpd` image we just created to explore the idea of "rechunking" images.
+== Optimizing an image
+Images that include a large number of RPMs across multiple layers can sometimes lead to updates that affect the structure of content in an image.
+This can lead to large downloads of seemingly unrelated layers for a small change like a configuration file.
+Other non-packaged items like container images, say for a use case that would like to ship all of the containers required for a functional host at install time via bound images, can also create these sorts of updates.
 
-First, let's re-tag it so we can push it to the registry.
+Rechunking addresses these by regrouping packages and content it's aware of in ways that are more efficient when pulled over the wire.
+
+=== The MacGuffin image
+
+For this example, we're going to create a particular image that will have a fair amount of  inefficiency stemming from the use of package groups over multiple layers. 
+This is a stand-in for real world situations to demonstrate the effects.
+We're sticking with Fedora in this example as well, since Red Hat bootc base images are rechunked before publishing.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman tag localhost/httpd:base registry-{guid}.{domain}/httpd:base 
+nano Containerfile.mess
+----
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+# Begin with a standard bootc base image
+FROM quay.io/fedora/fedora-bootc:latest
+
+RUN dnf -y install httpd sudo
+RUN dnf clean all
+RUN rm /var/{log,cache,lib}/* -rf
+
+RUN systemctl enable httpd
+RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
+RUN bootc container lint
 ----
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman push registry-{guid}.{domain}/httpd:base
+podman build -t registry-{guid}.{domain}/mess -f Containerfile.mess
 ----
 
 Rechunking is also a function of `bootc-base-imagectl`.
 This takes an existing image, and creates a new ostree commit that is more optimized for `bootc` operations.
+Rechunking should be done as the last step before publishing an image to the registry, and isn't really overhead to take on intermediate builds along a chain of images or local iteration.
+
 [source,bash,role="execute",subs=attributes+]
 ----
 podman run --rm --privileged -v /var/lib/containers:/var/lib/containers \
-registry.redhat.io/rhel10/rhel-bootc:10.1 \
+quay.io/fedora/fedora-bootc:latest \
 /usr/libexec/bootc-base-imagectl rechunk \
-registry-{guid}.{domain}/httpd:base \ <.>
-registry-{guid}.{domain}/httpd:rechunked <.>
+registry-{guid}.{domain}/mess:latest \ <.>
+registry-{guid}.{domain}/mess:rechunked <.>
 ----
 <.> starting image to optimize
 <.> target image name
@@ -40,17 +65,16 @@ First examine the two for size
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman images registry-{guid}.{domain}/httpd
+podman images registry-{guid}.{domain}/mess
 ----
 
 There is a slight difference in image size, so something internal has changed.
 The primary manifestation is how images are pulled over the wire to the host.
 
 Push the rechunked image to the registry.
-
 [source,bash,role="execute",subs=attributes+]
 ----
-podman push registry-{guid}.{domain}/httpd:rechunked
+podman push registry-{guid}.{domain}/mess:rechunked
 ----
 
 === Test an update
@@ -134,28 +158,50 @@ virsh start bootc-vm
 virsh start security-vm
 ----
 
-On Ops VM apply the standard base
+On Ops VM apply the standard image
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo bootc switch registry-{guid}.{domain}/httpd:base --apply
+sudo bootc switch registry-{guid}.{domain}/mess:latest
 ----
-
-On Sec VM apply the rechunked base
+....
+Fetching layers ██████████████████░░ 67/71
+Fetched layers: 1.46 GiB in 85 seconds (17.58 MiB/s)                                         
+....
+On Sec VM apply the rechunked image
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo bootc switch registry-{guid}.{domain}/httpd:rechunked --apply
+sudo bootc switch registry-{guid}.{domain}/mess:rechunked
 ----
+....
+Fetching layers ██████████████████░░ 60/65 
+Fetched layers: 1.36 GiB in 71 seconds (19.47 MiB/s)
+....
 
-On Build host, add a new layer to the Containerfile, build and rechunk again.
+The rechunked image had fewer layers which accounted for the smaller size. 
+Rechunking provided a small but tangible improvement in our MacGuffin situation.
+In real world scenarios involving bound container images, this would be more evident.
+
+On Build host, add a new layer to the Containerfile before the linter run, build and rechunk again.
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman build -t registry-kf7m4.apps.ocpvdev01.rhdp.net/httpd:base -f Containerfile.std
----
+nano Containerfile.mess
+----
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+RUN mv /var/www /usr/share/www && \
+    sed -ie 's,/var/www,/usr/share/www,' /etc/httpd/conf/httpd.conf
+RUN echo "Welcome to the image mode webserver" >> /usr/share/www/html/index.html
+----
+[source,bash,role="execute",subs=attributes+]
+----
+podman build -t registry-{guid}.{domain}/mess  -f Containerfile.mess
+----
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman push registry-{guid}.{domain}/httpd:base
+podman push registry-{guid}.{domain}/mess
 ----
 
 [source,bash,role="execute",subs=attributes+]
@@ -163,17 +209,18 @@ podman push registry-{guid}.{domain}/httpd:base
 podman run --rm --privileged -v /var/lib/containers:/var/lib/containers \
 registry.redhat.io/rhel10/rhel-bootc:10.1 \
 /usr/libexec/bootc-base-imagectl rechunk \
-registry-{guid}.{domain}/httpd:base \ <.>
-registry-{guid}.{domain}/httpd:rechunked <.>
+registry-{guid}.{domain}/mess:latest \ <.>
+registry-{guid}.{domain}/mess:rechunked <.>
 ----
+Notice that the rechunker detected the target was already chunked.
 
-On Ops VM apply the standard base
+On Ops VM apply the upgrade to the standard image
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc upgrade
 ----
 
-On Sec VM apply the rechunked base
+On Sec VM apply the rechunked upgrade
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc upgrade
