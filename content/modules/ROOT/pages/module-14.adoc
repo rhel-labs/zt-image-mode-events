@@ -1,4 +1,4 @@
-= Building your own base images
+= Building your own base images (Extra credit)
 
 There are times that you want to create your own bases from scratch instead of relying on the Red Hat base images. Here's how to do that.
 

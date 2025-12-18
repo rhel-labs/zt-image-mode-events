@@ -34,15 +34,16 @@ nano Containerfile.mess
 FROM quay.io/fedora/fedora-bootc:latest
 
 RUN dnf -y install httpd sudo
+RUN dnf -y install @editors
+RUN dnf -y install @development-tools --exclude=openh264
+RUN dnf -y install @headless-management
+
 RUN dnf clean all
 RUN rm /var/{log,cache,lib}/* -rf
 
 RUN systemctl enable httpd
 RUN echo "%wheel  ALL=(ALL)   NOPASSWD: ALL" >> /etc/sudoers.d/wheel
 RUN bootc container lint
-----
-
-[source,bash,role="execute",subs=attributes+]
 ----
 podman build -t registry-{guid}.{domain}/mess -f Containerfile.mess
 ----
@@ -106,7 +107,7 @@ virsh destroy bootc-vm
 ----
 [source,bash,role="execute",subs=attributes+]
 ----
-virsh undefine bootc-vm
+virsh undefine bootc-vm --remove-all-storage
 ----
 
 [source,bash,role="execute",subs=attributes+]
@@ -115,7 +116,7 @@ virsh destroy security-vm
 ----
 [source,bash,role="execute",subs=attributes+]
 ----
-virsh undefine security-vm
+virsh undefine security-vm --remove-all-storage
 ----
 
 Copy the source disk to each of the expected locations

@@ -27,9 +27,6 @@ antora:
     - name: "module-08"
       label: "Adding Troubleshooting tools"
       solveButton: false
-    - name: "module-09"
-      label: "Building a troubleshooting toolbox"
-      solveButton: false
     - name: "module-10"
       label: "Troubleshooting an image mode deployment"
       solveButton: false
@@ -46,10 +43,7 @@ antora:
       label: "Platform targets"
       solveButton: false
     - name: "module-14"
-      label: "Extra RH1 module: Scratch builds and rechunking"
-      solveButton: false
-    - name: "module-15"
-      label: "Rechunk"
+      label: "Extra credit module: Scratch builds"
       solveButton: false
 tabs:
   - name: "Build host terminal"
@@ -62,7 +56,6 @@ tabs:
       - module-04
       - module-05
       - module-10
-      - module-15
   - name: ">_ Sec SSH session"
     url: /wetty_security_vm/ssh/root
     modules:
@@ -72,4 +65,3 @@ tabs:
       - module-11
       - module-12
       - module-13
-      - module-15
