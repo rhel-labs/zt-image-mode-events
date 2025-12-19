@@ -56,8 +56,10 @@ RUN bootc container lint
 Similar to `bootc-image-builder`, to build a `scratch` image with `podman` we need to add additional capabilities and devices to the build, even as root.
 [source,bash,role="execute",subs=attributes+]
 ----
-podman build -t minimal -f Containerfile.scratch --cap-add=all --security-opt=label=type:container_runtime_t --device /dev/fuse
+time podman build -t minimal -f Containerfile.scratch --cap-add=all --security-opt=label=type:container_runtime_t --device /dev/fuse
 ----
+
+NOTE: Scratch builds are extensive and can take upwards of 6 min
 
 You can see that seemingly simple builder image does a huge amount of work setting up the base filesystem.
 
@@ -81,7 +83,7 @@ podman images quay.io/fedora/fedora-bootc:latest
 REPOSITORY                            TAG         IMAGE ID      CREATED       SIZE
 quay.io/fedora/fedora-bootc  latest      e96ee34fce43  9 hours ago  1.88 GB
 ....
-You can see there's a significant size difference as the _minimal_ manifest only installed about 200 packages.
+For all that time spent, you can see there's a significant size difference as the _minimal_ manifest only installed about 200 packages.
 The standard Fedora base is about 500.
 
 To see how these compare when put to actual use, let's build two new images from the same Containerfile using each base image.
@@ -152,15 +154,15 @@ There's still a size difference between these images, but we may be missing cert
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman run --rm -it httpd:base rpm -q openssh
+podman run --rm -it httpd:base rpm -q openssh-server
 ----
 ....
-openssh-10.0p1-6.fc43.x86_64
+openssh-server-10.0p1-6.fc43.x86_64
 ....
 
 [source,bash,role="execute",subs=attributes+]
 ----
-podman run --rm -it httpd:min rpm -q openssh
+podman run --rm -it httpd:min rpm -q openssh-server
 ----
 ....
 package openssh is not installed

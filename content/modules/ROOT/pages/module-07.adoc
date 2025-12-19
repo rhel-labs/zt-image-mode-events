@@ -74,7 +74,7 @@ podman push registry-{guid}.{domain}/base
 Since we've added a few labels now, let's use `skopeo` to pull them from the latest image and use `jq` to pretty up the output.
 [source,bash,role="execute",subs=attributes+]
 ----
-skopeo inspect --format '{{json .Labels }}' docker://registry-t8nvd.apps.ocpvdev01.rhdp.net/base | jq
+skopeo inspect --format '{{json .Labels }}' docker://rregistry-{guid}.{domain}/base | jq
 ----
 There's quite a few labels applied by default that describe RHEL version, architecture, creation dates, release info, and if this is in fact a bootc image. There's also our CIS profile and our company name as the vendor.
 
