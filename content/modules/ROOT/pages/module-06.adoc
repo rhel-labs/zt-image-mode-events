@@ -21,7 +21,6 @@ FAPolicyD is one of the standard tools the security team asked for, including th
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Security and Hardening 
-
 RUN dnf -y install audit fapolicyd openscap-utils scap-security-guide setroubleshoot-server
 
 RUN systemctl enable fapolicyd

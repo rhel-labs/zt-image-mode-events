@@ -291,7 +291,7 @@ The concept is that for any one "final artifact", be that standard baseline or p
 This may vary from how you manage configurations today with tools that might use a modular approach to create automation, like anisble playbooks.
 Since Containerfiles aren't particularly modular, we're following a pattern from the developers of one app per repo.
 
-=== Updateing the Containerfile
+=== Updating the Containerfile
 
 We'll make a series of edits to the Containerfile to incorporate all of our changes.
 
@@ -399,15 +399,11 @@ sudo bootc update --soft-reboot=required --apply
 ----
 
 ==== _Click on the tab labeled "Build host"_ 
-On the build host, check the output of our serial console.
+Once you see "Deploying" in the output, switch to the build host and check the output of our serial console.
 So far, the reboots of our VMs have been fairly quick, but you can scroll through the ouput to see that this reboot is different.
 Not only was it quicker, but after `systemd` shut the system down, we never got passed to the BIOS.
 
 To exit the `virsh console` hit `Ctrl+]`
-[source,bash,role="execute",subs=attributes+]
-----
-^]
-----
 
 ==== _Switch to the "Sec SSH session" tab_
 Since soft reboots are a feature of `systemd`, `systemctl show` will provide information as with any other property, like the number of soft reboots for the host.
