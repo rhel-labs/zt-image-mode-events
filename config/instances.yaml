@@ -63,27 +63,3 @@ virtualmachines:
         command: /root/.wait_for_bootc_vm.sh
       - name: wetty_security_vm
         command: /root/.wait_for_security_vm.sh
-  - name: "imrhel"
-    image: "rhel-10-0-07-09-25-3"
-    bootloader: efi
-    memory: "4G"
-    cores: 2
-    image_size: "40G"
-    tags:
-      - key: "AnsibleGroup"
-        value: "nodes"
-    networks:
-      - default
-    services:
-      - name: app
-        ports:
-          - port: 80
-            protocol: TCP
-            targetPort: 80
-            name: app
-    routes:
-      - name: app
-        host: app
-        service: app
-        targetPort: 80
-        tls: false
