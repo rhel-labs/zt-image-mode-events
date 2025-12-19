@@ -16,7 +16,7 @@ In this lab, you'll build an image mode host to support this new application bas
 The design of a standard operating environment is a common practice that image mode provides some new options and capabilites to support.
 
 == Lab machines
-You will interact with a total of 4 systems: the primary build machine, a container registry, and image mode VMs.  Most of your work will be done on the lab hypervisor, and you will create image mode VMs as part of the exercises. Caution should be taken when instructed to reboot a system that you are on the correct host.
+You will interact with a total of 3 systems: the primary build machine, a container registry, and image mode VMs.  Most of your work will be done on the lab hypervisor, and you will create image mode VMs as part of the exercises. Caution should be taken when instructed to reboot a system that you are on the correct host.
 
 === System purpose
 
