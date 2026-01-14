@@ -11,11 +11,11 @@ Not requiring a password every time we use sudo might be something we allow admi
 We may also need to put notices on logins or present info in the MOTD. Let's make some changes to how the system behaves. 
 
 
-RHEL supports drop-in directories for several services and applications, including 
-`sudo` privileges. 
+RHEL supports drop-in directories for several services and applications, including
+`sudo` privileges.
 
-Drop-in support lets us add a file to a `<servicename>.d` directory rather than editing 
-the main configuration file. You might already be familiar with drop-in config files from working with Apache and it's `/etc/httpd/conf.d/` directory. Using drop-in files lets us affect the configuration of a system, without needing to edit a file in place, or carry a full configuration file in the image.
+Drop-in support lets us add a file to a `<servicename>.d` directory rather than editing
+the main configuration file. You might already be familiar with drop-in config files from working with Apache and its `/etc/httpd/conf.d/` directory. Using drop-in files lets us affect the configuration of a system, without needing to edit a file in place, or carry a full configuration file in the image.
 
 
 Let's address the sudoers password first, by allowing users in the wheel group to not need to enter their password.
@@ -35,7 +35,7 @@ Add the following and save the file
 
 For some cloud provider serial consoles we need to update the console definition.
 Typically this is handled by passing kernel parameters to the boot entry.
-For image mode systems, `/boot` is read-only, so we have support for passing kernel paramaters via configuration files in `/usr/lib/bootc/kargs.d` as drop-ins.
+For image mode systems, `/boot` is read-only, so we have support for passing kernel parameters via configuration files in `/usr/lib/bootc/kargs.d` as drop-ins.
 
 
 [source,bash,role="execute",subs=attributes+]
@@ -96,8 +96,8 @@ We can log in and cache credentials in our shell, but that won't work for the im
 podman login -u core -p redhat registry-{guid}.{domain}
 ----
 
-To create system credentials, we'll reuse the user login, but typically some sort of service acccount would be used.
-In any case, the files are identeical, and can be published in the image. This will allow a newly created image mode host to update immediately after install.
+To create system credentials, we'll reuse the user login, but typically some sort of service account would be used.
+In any case, the files are identical, and can be published in the image. This will allow a newly created image mode host to update immediately after install.
 
 === Distributing pull secrets
 
@@ -110,7 +110,7 @@ podman login -u core -p redhat registry-{guid}.{domain} --authfile=auth.json
 ----
 
 With the authfile created, we can add this to the Containerfile.
-Since we've made a change to our definition, we need to rebuld the image.
+Since we've made a change to our definition, we need to rebuild the image.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 COPY auth.json /etc/ostree/auth.json
@@ -165,7 +165,7 @@ The `/etc` directory can be updated either via the image or via the running host
 This allows for central control with local overrides.
 During an update, `bootc` will compare the incoming `/etc` to the host `/etc` to determine what changes to make.
 If there have been local updates, those will be preserved, otherwise the new file will be installed.
-We've written more about this https://developers.redhat.com/articles/2025/08/25/what-image-mode-3-way-merge['3 way merge' process,window=_blank] and the implications for image mode hosts.
+We've written more about this https://developers.redhat.com/articles/2025/08/25/what-image-mode-3-way-merge['3-way merge' process,window=_blank] and the implications for image mode hosts.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo podman login -u core -p redhat registry-{guid}.{domain} --authfile=/etc/ostree/auth.json

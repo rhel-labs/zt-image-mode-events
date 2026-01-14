@@ -2,7 +2,7 @@
 
 Several strategies for increasing the efficiency of updates over the wire are in play with image mode. 
 Each of these depend on where the source of inefficiency lies.
-Rechunking address those that come from the build process.
+Rechunking addresses those that come from the build process.
 
 [#write-containerfiles]
 == Optimizing an image

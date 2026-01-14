@@ -50,7 +50,7 @@ The reference https://oras.land/docs/concepts/reference/[is made up of ,window=_
 In this lab, we aren't using namespaces, but if you work with `quay.io` or ghcr.io, you may have seen image names that have a username in them.
 
 If we publish this change with a new tag, that means every Containerfile that references this baseline would need to also be changed.
-Red Hat base images use several tags, a `latest` tag that is attached to the most recent image of a major version, a RHEL version tag eg `10.1` that is attached to the latest base of a particular minor version, and a UNIX epoch timestamped verstion tag eg `10.1-1763458003` that stays with a specific image. 
+Red Hat base images use several tags, a `latest` tag that is attached to the most recent image of a major version, a RHEL version tag eg `10.1` that is attached to the latest base of a particular minor version, and a UNIX epoch timestamped version tag eg `10.1-1763458003` that stays with a specific image. 
 At the time of writing, all three of those tags refer to the same image in the Red Hat catalog.
 Tracking static tags provide the most control over updates and image contents, and floating tags provide easier paths for updates.
 [source,bash,role="execute",subs=attributes+]
@@ -178,9 +178,9 @@ sudo bootc status -v
 ....
 
 Notice the `Digest` of the staged image matches the output of our update command, but the `Soft-reboot` is set to `no` unlike the other images.
-The staging of the update was successful however and we can simply reboot. 
-The only thing we couldn't do was the soft relaunch of userspace. 
-The atomic nature of the updates let's us try to soft-reboot all the time and be notified when a hard reboot is required.
+The staging of the update was successful however and we can simply reboot.
+The only thing we couldn't do was the soft relaunch of userspace.
+The atomic nature of the updates lets us try to soft-reboot all the time and be notified when a hard reboot is required.
 
 == Core principles
 Tags and other metadata are useful for humans to keep track of what images are in use and how they should be used.

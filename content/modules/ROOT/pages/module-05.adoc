@@ -1,8 +1,8 @@
 == Image mode good ideas
 This is a decent start for our gold image, but let's address a few more topics.
-Our goals are to centralize our configuration and build processes while making it easier to work acrross teams.
+Our goals are to centralize our configuration and build processes while making it easier to work across teams.
 
-The use of application containers have provided some good practices based on real world experience.
+The use of application containers has provided some good practices based on real world experience.
 We'll explore a few of these in context for image mode configurations.
 
 == Containerfile idioms
@@ -44,7 +44,7 @@ Package mode builds tend to have multiple different build artifacts spread acros
 Let's use that mindset and set up a directory structure that mimics `/etc` and `/usr` to hold the specific configurations that will apply to the hosts created from this image.
 This allows us to add all the configs at once with a single COPY command and in a single layer of the image.
 
-NOTE: These are local, relative to the location of the Containerfile, not the build host filesystem. Remenber we're thinking about this as a git repository.
+NOTE: These are local, relative to the location of the Containerfile, not the build host filesystem. Remember we're thinking about this as a git repository.
 
 ==== Create the structure
 [source,bash,role="execute",subs=attributes+]
@@ -110,7 +110,7 @@ We briefly mentioned that by default, there's a timer active that will apply upd
 In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
 One simple way to disable the timer is to mask the service with `systemd`. 
 This will ensure that the service isn't unexpectedly enabled after a change or update.
-Since this is a systemd timer, you can manange and modify the defintion to fit your environment by creating a new service file.
+Since this is a systemd timer, you can manage and modify the definition to fit your environment by creating a new service file.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 RUN systemctl mask bootc-fetch-apply-updates.timer
@@ -151,7 +151,7 @@ No changes in: docker://registry-mjghb.apps.ocpvdev01.rhdp.net/base
 ....
 
 == Core principles
-In this exercise we focused on making some idomatic changes to the Containerfile and exploring how image mode hosts handle files. 
+In this exercise we focused on making some idiomatic changes to the Containerfile and exploring how image mode hosts handle files. 
 We looked at how the build files may differ from the collection of automation and files for a package mode host.
 
-We've satisfied the basic needs of the operations team, in the next section we'll tackle the security requiments and dig deeper into some of these topics.
+We've satisfied the basic needs of the operations team, in the next section we'll tackle the security requirements and dig deeper into some of these topics.

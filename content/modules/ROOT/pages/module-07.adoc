@@ -7,7 +7,7 @@ We could add all of the various packages and configuration changes directly to o
 
 The security team uses the CIS Level 1 policy with some deviations for all public facing webservers.
 To setup our openscap policy, we will first make a change to the policy using `autotailor`. 
-You will likely need to tailor any compliance policy to your organization's needs as these aren't one size fits all.  
+You will likely need to tailor any compliance policy to your organization's needs as these aren't one size fits all.
 In our example we are simply turning root logins back on so as not to break the lab environment. 
 
 To do this, we will tailor our policy right on our build host.
@@ -26,17 +26,17 @@ autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login 
 <.> The name of the policy file to write
 <.> The original policy to tailor
 
-Then we'll modify our Containerfile, removing the line where we enable FAPolicyd, and replacing it with an oscap policy block. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here.  This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
+Then we'll modify our Containerfile, removing the line where we enable FAPolicyd, and replacing it with an oscap policy block. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here. This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
 
 We'll use the new `oscap-im` tool to scan and remediate the image at build time.
 This tool is also part of the `openscap-utils` package and is specially designed for operating inside a containerized build.
 
-Remeber, labels are for humans, so adding something about the compliance configuration that can be read from the registry or locally without starting or examining a running host is helpful.
+Remember, labels are for humans, so adding something about the compliance configuration that can be read from the registry or locally without starting or examining a running host is helpful.
 
 Open up the Containerfile, and then add the following after the `systemctl enable` line.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-LABEL profile="CIS Sever Level 1 base image"
+LABEL profile="CIS Server Level 1 base image"
 ENV profileID=cis_server_l1_customized <.>
 
 COPY $profileID.xml /tmp/$profileID.xml
@@ -74,7 +74,7 @@ podman push registry-{guid}.{domain}/base
 Since we've added a few labels now, let's use `skopeo` to pull them from the latest image and use `jq` to pretty up the output.
 [source,bash,role="execute",subs=attributes+]
 ----
-skopeo inspect --format '{{json .Labels }}' docker://rregistry-{guid}.{domain}/base | jq
+skopeo inspect --format '{{json .Labels }}' docker://registry-{guid}.{domain}/base | jq
 ----
 There's quite a few labels applied by default that describe RHEL version, architecture, creation dates, release info, and if this is in fact a bootc image. There's also our CIS profile and our company name as the vendor.
 
@@ -110,4 +110,4 @@ What about FAPolicyD?
 sudo fapolicyd-cli -l
 ----
 
-Great!  Now we have an immutable OS, that matches our standards.  But, what do we do about that inevitable drift?  In the next module we'll adress that. 
+Great!  Now we have an immutable OS, that matches our standards.  But, what do we do about that inevitable drift?  In the next module we'll address that. 
