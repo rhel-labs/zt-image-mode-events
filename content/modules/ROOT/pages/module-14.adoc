@@ -17,7 +17,7 @@ To create an image from scratch, use the Red Hat base as the builder, since the 
 This image will act as a new base image for later builds.
 
 The documentation example is a multi-stage build that takes the components created by the `bootc` tooling as the starting point for the `scratch` image.
-Instead, let's build a miminal base image to compare against the Red Hat base we've been using so far.
+Instead, let's build a minimal base image to compare against the Red Hat base we've been using so far.
 
 CAUTION: We've identified a bug in the latest minimal manifest that breaks `subscription-manager` using host entitlements in a containerized build. A workaround at the time of writing was only show effective for hosts using the CDN not Satellite, which is in use in this environment. For that reason, we'll use Fedora for this and following exercises.
 
@@ -51,7 +51,7 @@ RUN bootc container lint
 <.> `bootc` creates the image based on the specified manifest
 <.> The special FROM statement that creates an empty image
 <.> Moving the filesystem created in the builder image to the empty target
-<.> Housekeeping to appropriately identitfy this as a `bootc` image to container tools
+<.> Housekeeping to appropriately identify this as a `bootc` image to container tools
 
 Similar to `bootc-image-builder`, to build a `scratch` image with `podman` we need to add additional capabilities and devices to the build, even as root.
 [source,bash,role="execute",subs=attributes+]

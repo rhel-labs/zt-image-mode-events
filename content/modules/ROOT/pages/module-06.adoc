@@ -12,10 +12,10 @@ Because we will be making significant changes to our system, we are going to sta
 
 == Adding security controls to your image: FAPolicyd
 
-One of the common services the security team uses to meet compliance and security mandteas is FAPolicyD.
+One of the common services the security team uses to meet compliance and security mandates is FAPolicyD.
 The File Access Policy Daemon is a service that implements application allow-listing.  So let's see what it looks like to simply add it to our `Containerfile`.  
 
-NOTE: We will be adding these changes after the `systemctl mask` line at the end of the exsting file
+NOTE: We will be adding these changes after the `systemctl mask` line at the end of the existing file
 
 FAPolicyD is one of the standard tools the security team asked for, including the audit subsystem and SELinux troubleshooting. We'll also install the packages for the SCAP policy tools now since we know that's coming.
 [source,dockerfile,role="execute",subs=attributes+]
@@ -72,7 +72,7 @@ virt-install --name security-vm \
   --noreboot
 ----
 
-After that completes, you will need to start up securty-vm, and then you will find the new system in the Sec SSH session tab.
+After that completes, you will need to start up security-vm, and then you will find the new system in the Sec SSH session tab.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -98,7 +98,7 @@ To test whether it's working, we can just take a known good binary, and put it s
 cp /bin/ls ~
 ----
 
-You should not be allowed to run `ls` from your home directorn. 
+You should not be allowed to run `ls` from your home directory. 
 [source,bash,role="execute",subs=attributes+]
 ----
 ~/ls
@@ -108,5 +108,5 @@ You should not be allowed to run `ls` from your home directorn.
 ....
 
 Great! FAPolicyd works!  
-But, we're nowhere close to satifying the security teams requirements, for that we'll need to do more than just install a service and enable it.  
+But, we're nowhere close to satisfying the security teams requirements, for that we'll need to do more than just install a service and enable it.  
 For that, we'll want to deploy a full policy.  You guessed it, in our next module we'll do just that! 

@@ -10,8 +10,8 @@ The developers can take a standard build that has all of the operations tools av
 This ensures a common experience across the teams, making troubleshooting and design smoother. 
 
 Starting with their Containerfile solved the `works on my machine` problem in a new way. 
-Reproducing the issue was extremly simple with a known starting point.
-In fact, instead of starting with the Containerfile, we could have used the exact image for our testing and ensured reproducability.
+Reproducing the issue was extremely simple with a known starting point.
+In fact, instead of starting with the Containerfile, we could have used the exact image for our testing and ensured reproducibility.
 
 With the application starting, we now need to move the proof of concept from the Red Hat provided base image to the baseline created during this lab.
 
@@ -209,7 +209,7 @@ Make sure you're in the git repository for the application.
 cd ~/bootc-version
 ----
 
-=== 0rganizing the repo
+=== Organizing the repo
 There are 3 kinds of files the developers created: the app, the system configs, and the build configs. 
 Let's create some directories that match those types.
 
@@ -287,8 +287,8 @@ drwxr-xr-x. 2 root root   51 Nov 17 22:18 etc
 Notice all the git repo files stayed put based on the bash glob expansion.
 
 This is a fairly opinionated way of organizing a repository to hold the definition of a system.
-The concept is that for any one "final artifact", be that standard baseline or prodcution host, would be in a single location.
-This may vary from how you manage configurations today with tools that might use a modular approach to create automation, like anisble playbooks.
+The concept is that for any one "final artifact", be that standard baseline or production host, would be in a single location.
+This may vary from how you manage configurations today with tools that might use a modular approach to create automation, like ansible playbooks.
 Since Containerfiles aren't particularly modular, we're following a pattern from the developers of one app per repo.
 
 === Updating the Containerfile
@@ -328,7 +328,7 @@ COPY app/ /app
 
 # custom Nginx configuration file that acts as a reverse proxy
 # nginx tmpfiles.d configuration
-# application systemd service defintion
+# application systemd service definition
 COPY etc/ /etc
 
 # Install requirements via pip3
@@ -373,7 +373,7 @@ podman push registry-{guid}.{domain}/app-test:v2
 
 === Soft versus hard reboots
 
-Having a serial console makes the next test more intersting, and luckily we can get one to our virtual machine.
+Having a serial console makes the next test more interesting, and luckily we can get one to our virtual machine.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -382,14 +382,14 @@ virsh console security-vm
 
 You may need to hit `Enter` to see the login prompt.
 Once you do you can proceed to the next step.
-If you like you can execute the next `bootc` instruction in this serical session instead of the web terminal.
+If you like you can execute the next `bootc` instruction in this serial session instead of the web terminal.
 
 ==== _Switch to the "Sec SSH session" tab to test the latest build of the image._
 
 We briefly mentioned the idea of "soft reboots" earlier.
 Soft reboots are a new feature of `systemd` that restarts user space (including re-executing itself) without fully restarting the host.
 For changes that don't include kernel updates or other operations that only happen during the full init process like loading the custom SELinux module, this can save a lot of time on most systems.
-Keep in mind, all of the applications will be restarted, so for large in-memory databases you may not find soft reboots as uninstrusive.
+Keep in mind, all of the applications will be restarted, so for large in-memory databases you may not find soft reboots as unintrusive.
 
 The `required` flag tells bootc to error if a soft reboot isn't possible. 
 The `auto` flag tells bootc to execute whichever reboot is applicable. 
@@ -400,7 +400,7 @@ sudo bootc update --soft-reboot=required --apply
 
 ==== _Click on the tab labeled "Build host"_ 
 Once you see "Deploying" in the output, switch to the build host and check the output of our serial console.
-So far, the reboots of our VMs have been fairly quick, but you can scroll through the ouput to see that this reboot is different.
+So far, the reboots of our VMs have been fairly quick, but you can scroll through the output to see that this reboot is different.
 Not only was it quicker, but after `systemd` shut the system down, we never got passed to the BIOS.
 
 To exit the `virsh console` hit `Ctrl+]`
@@ -412,7 +412,7 @@ Since soft reboots are a feature of `systemd`, `systemctl show` will provide inf
 systemctl show --value --property SoftRebootsCount
 ----
 
-The output of `bootc status` will also show if a particular image is a soft reboot candidate with a new field in the verobse output.
+The output of `bootc status` will also show if a particular image is a soft reboot candidate with a new field in the verbose output.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status --verbose

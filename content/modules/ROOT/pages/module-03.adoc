@@ -11,9 +11,9 @@ For example, Anaconda can be used with bootc images for physical or virtual host
 
 In this lab, we'll use the `bootc-image-builder` tool which can create various different disk image types and call `bootc` to deploy the image contents. This is a variant of the Image Builder tooling you are already familiar with, just containerized and with `bootc` built in.
 
-You may have noticed the bootc image we've created does not include any login credentials. 
-Not a typical concern for an application container, but as a host we will very likely need to interact with it at some point. 
-Since we are defining an image to be shared by multiple hosts in multiple different environments, users and authentication is most likely to be handled at the *deployment* stage, not the build stage.
+You may have noticed the bootc image we've created does not include any login credentials.
+Not a typical concern for an application container, but as a host we will very likely need to interact with it at some point.
+Since we are defining an image to be shared by multiple hosts in multiple different environments, users and authentication are most likely to be handled at the *deployment* stage, not the build stage.
 
 TIP: There are cases where it may be useful for a user and credentials to be added to an image, 
 as a 'break glass' emergency login for example.
@@ -22,7 +22,7 @@ To add a user during the deployment to a disk image, the credentials are put int
 
 You can now create a file called `config.toml` with the following contents to create a user with the specified values.
 
-You'll be replacing "SSHKEY" placeholder in the `key` field with the contents of public key from your system in the next step.
+You'll be replacing "SSHKEY" placeholder in the `key` field with the contents of the public key from your system in the next step.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -38,7 +38,7 @@ groups = ["wheel"]
 key = "SSHKEY"
 ----
 
-This configuration blueprint creates a user in the wheel group with the login `core`, the password `redhat` and the ssh key of the user on the lab host.
+This configuration blueprint creates a user in the wheel group with the login `core`, the password `redhat` and the SSH key of the user on the lab host.
 
 Save the file and return to the terminal to get the ssh key.
 An ssh key pair was generated for use during this lab, you can copy the key and edit the `config.toml` to replace the `SSHKEY` with the actual key.

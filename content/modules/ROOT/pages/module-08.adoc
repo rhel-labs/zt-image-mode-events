@@ -1,21 +1,21 @@
 = Build vs run considerations
 One of the concepts that will continue to come to surface when exploring image mode is when to centralize something at build time vs customize at run time.
-The design goal is to push as much _as possible_ to build time and increae reuse.
+The design goal is to push as much _as possible_ to build time and increase reuse.
 However, run time changes are always required for instances, even if only for networking and hostnames.
 Image mode offers another way to address run time changes temporarily.
 
-== Installing troublsehooting tools
+== Installing troubleshooting tools
 It happens, we know.  
 Different teams have different tools that are only used occasionally for various reasons.
 Maybe it's troubleshooting, or gathering information for a support request, or just to carry out some task on your servers.  
 
-Imagine it, you're asked to get a packet capture to troubleshoot some network latency issue.  So you install tcpdump, and do your work.  Did you remember to remove it afterword?  Or another example, you install netcat to test some firewall ports, and then there it is, ready for an attacker to leverage for a reverse shell.  These are core examples of why package drift can be a bad thing.  
+Imagine it, you're asked to get a packet capture to troubleshoot some network latency issue.  So you install tcpdump, and do your work.  Did you remember to remove it afterward?  Or another example, you install netcat to test some firewall ports, and then there it is, ready for an attacker to leverage for a reverse shell.  These are core examples of why package drift can be a bad thing.
 
-In RHEL package mode this is simple, you do a dnf install, and you're done. This however introduces drift.  It can also be a concern from a sercurity and compliance perspective, and be hard to do on a temporary basis.
+In RHEL package mode this is simple, you do a dnf install, and you're done. This however introduces drift.  It can also be a concern from a security and compliance perspective, and be hard to do on a temporary basis.
 Luckily RHEL Image Mode helps you control package drift by moving package installs into your image creation. 
 
-But should you even add those to your bootc image? No! 
-These are usually one off needs, and carrying them as part of a gold image increases maintenace and could increase sercurity risk.
+But should you even add those to your bootc image? No!
+These are usually one off needs, and carrying them as part of a gold image increases maintenance and could increase security risk.
 Instead, you can install them transiently, and then they will go away on their own the next time the system is imaged, updated, or even rebooted. 
 
 == Transient package installs
@@ -103,7 +103,7 @@ tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
 /dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
 ....
 
-This can be useful for all sorts of tools that are only temporarily or sporadically needed for troubleshooting or other reaons, like security scans.
+This can be useful for all sorts of tools that are only temporarily or sporadically needed for troubleshooting or other reasons, like security scans.
 
 == Core principles
 Centralizing package control at the image layer is useful, but sometimes local changes are needed.

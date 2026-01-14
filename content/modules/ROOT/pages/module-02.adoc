@@ -1,10 +1,10 @@
 = Build a bootc image
 In this exercise, you will see how to apply application container build concepts to a bootc image.
 
-The fundamental principle of image mode is applying a decade of container expertice and advancements to building operating system images.
+The fundamental principle of image mode is applying a decade of container expertise and advancements to building operating system images.
 This simple idea has a wide impact on how we think about OS design, working with 'gold images', working with other teams, addressing updates, and more.
 In this lab, we'll walk through the process of creating a new 'gold image' for an application.
-We'll start with the tools the operations team needs, add the requirements from the security team, and then get our applicaion ready for deployment.
+We'll start with the tools the operations team needs, add the requirements from the security team, and then get our application ready for deployment.
 
 [NOTE]
 ====
@@ -31,7 +31,7 @@ For our admins, we've got a list of common tools we need available on every host
 [TIP] 
 We'll be adding a few different sections to the same file, you can save at the end or as you go
 
-Let's add some common tools now, PCP, remote syslogging, kernel tuning, and `tumux`.
+Let's add some common tools now, PCP, remote syslogging, kernel tuning, and `tmux`.
 `RUN` directives act like shell commands, so this looks like any other command spread over multiple lines for readability.
 [source,bash,role="execute",subs=attributes+]
 ----

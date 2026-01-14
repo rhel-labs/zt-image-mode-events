@@ -2,7 +2,7 @@
 
 In addition to simplifying updates and providing native rollback, operating RHEL in image mode also makes it simple to quickly change the purpose of a running system.
 
-The `switch` operation allows adminstrators to change the system software to a different image, while keeping local system configuration and data intact.
+The `switch` operation allows administrators to change the system software to a different image, while keeping local system configuration and data intact.
 
 In this lab we'll explore this feature as well as expand on the idea of standardized builds and derived images.
 
@@ -150,7 +150,7 @@ In an image mode system, `bootc` handles the following directories differently, 
   * `/etc` -> local configuration state, contents of the image are merged with a preference for local files
   * `/var` -> local state, contents of the image will be ignored after the initial installation of any image
 
-Initial nginx logs and workfing files created during the build in `/var` are created as part of an *install* deployment.
+Initial nginx logs and working files created during the build in `/var` are created as part of an *install* deployment.
 During a `switch` or `upgrade`, this is now *local state* meaning `bootc` won't deploy those changes to a running system.
 So the directories created by the RPM aren't created on the running host, which explains why a fresh install launches the app but a switch fails. 
 This is one of the new mental models that needs to be adopted to handle image mode operations. 
@@ -162,7 +162,7 @@ By using `systemd tmpfiles` to manage them at boot.
 
 We don't expect you to handle all of these cases manually. 
 Upstream packages have been moving to use `systemd tmpfiles` and `systemd sysusers` to handle user and file creation for some time.
-The introduction of image mode has put some pressure on this migration, but you can already see the `nginx` package https://src.fedoraproject.org/rpms/nginx/blob/aff374fc9038f31a53370f5779f4d03df8fbbc6d/f/nginx.tmpfiles[already has a fix upstream.,window=_blank]
+The introduction of image mode has put some pressure on this migration, but you can already see the `nginx` package https://src.fedoraproject.org/rpms/nginx/blob/aff374fc9038f31a53370f5779f4d03df8fbbc6d/f/nginx.tmpfiles[already has a fix upstream,window=_blank].
 
 == Workaround with tmpfiles.d
 ===== _Switch to the tab labeled "Build host terminal"_
@@ -185,10 +185,10 @@ RUN <<EORUN
 EORUN
 ----
 
-Using the `heredoc` let's us run multiple commands as a single layer and can be very handy.
+Using the `heredoc` lets us run multiple commands as a single layer and can be very handy.
 Since this is executed during a build like any other shell `heredoc`, we need to use some `set` magic to make sure a failure here stops the build.
 
-We can also clean up a few of those other errors by removing the workfing caches from `/var` for things like `dnf` since these won't be needed after build.
+We can also clean up a few of those other errors by removing the working caches from `/var` for things like `dnf` since these won't be needed after build.
 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
