@@ -29,6 +29,38 @@ Like other containers, subscription information is taken from the build host by 
 For our admins, we've got a list of common tools we need available on every host to integrate with the management and monitoring tools.
 Let's add some common tools now, PCP, remote syslogging, kernel tuning, and `tumux`.
 `RUN` directives act like shell commands, so this looks like any other command spread over multiple lines for readability.
+
+First, let's create a directory tree that we will base all of our work out of. This is where all of our configuration and the `Containerfile` will live. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir ~/bootc-base
+----
+
+Now, inside of this base directory, we'll create a tree where our other confiration files will live as we build out our base image.
+
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir -p ~/bootc-base/etc/sudoers.d
+----
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir -p ~/bootc-base/etc/ostree
+----
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir -p ~/bootc-base/usr/lib/bootc/kargs.d
+----
+
+From here on, work done on our build host will be done within this base directory. So let's switch to it now. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+cd ~/bootc-base
+----
+
+Now, we can start creating our `Containerfile`.
+
 [source,bash,role="execute",subs=attributes+]
 ----
 nano Containerfile
@@ -54,6 +86,38 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.
 RUN dnf -y install btop iftop
 ----
 
+[#registry authentication]
+== Authenticating to a registry
+Container images commonly live in a container registry.  In the majority of cases this is also true for Image Mode images, because they are OCI compliant container images, they just contain the added bits required to be bootable.  
+
+Many times an enterprise registry will also require authentication.  In this lab, we have setup a registry as well, and it does require authentication.  
+
+We can log in and cache credentials in our shell, but that won't work for the image mode hosts.
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman login -u core -p redhat registry-{guid}.{domain}
+----
+
+To create system credentials, we'll reuse the user login, but typically some sort of service acccount would be used.
+
+In any case, the authentication files are identeical, and can be published in the image. This will allow a newly created image mode host to update immediately after install, because it already has cached registry credentials.
+
+When you interactively login using `podman login`, your registry credendials are stored on disk, but the `podman login` command can also generate a file for a single registry. 
+
+This can be useful as users may have personal credentials for a number of different registries and we don't want to accidentally include or leak these into different environments.
+[source,bash,role="execute",subs=attributes+]
+----
+podman login -u core -p redhat registry-{guid}.{domain} --authfile=auth.json
+----
+
+With the authfile created, we can add this to the Containerfile.
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+COPY auth.json /etc/ostree/auth.json
+----
+
 [#build]
 == Build the first bootc image
 
@@ -75,6 +139,13 @@ You will see `podman` process each line of the Containerfile just as it would fo
 ----
 Successfully tagged registry-{guid}.{domain}/httpd
 f1bea10eb37acf2e78a9b01c6242110c1901adbaf40dbce479241c6c735c58da
+----
+
+And now we can push this image to the tagged registry with:
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/base
 ----
 
 You have now built your first complete RHEL image as a bootc image!
