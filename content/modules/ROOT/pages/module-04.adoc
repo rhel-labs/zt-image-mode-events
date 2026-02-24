@@ -4,18 +4,18 @@ In this lab, you will learn how to make configuration or software changes in ima
 
 [#update-container]
 == Changing the bootc image
+==== _Click on the tab labeled "Build host"_ 
 
-We've created our first system but there are a few things that might be missing we typically 
-do to our systems. Not requiring a password every time we use sudo might be something we allow 
-admins to do. We may also need to put notices on logins or present info in the MOTD. Let's make 
-some changes to how the system behaves. 
+We've created our first system but there are a few things that might be missing we typically do to our systems. 
+Not requiring a password every time we use sudo might be something we allow admins to do. 
+We may also need to put notices on logins or present info in the MOTD. Let's make some changes to how the system behaves. 
 
 
-RHEL supports drop-in directories for several services and applications, including 
-`sudo` privileges. 
+RHEL supports drop-in directories for several services and applications, including
+`sudo` privileges.
 
-Drop-in support lets us add a file to a `<servicename>.d` directory rather than editing 
-the main configuration file. You might already be familiar with drop-in config files from working with Apache and it's `/etc/httpd/conf.d/` directory. Using drop-in files lets us affect the configuration of a system, without needing to edit a file in place, or carry a full configuration file in the image.
+Drop-in support lets us add a file to a `<servicename>.d` directory rather than editing
+the main configuration file. You might already be familiar with drop-in config files from working with Apache and its `/etc/httpd/conf.d/` directory. Using drop-in files lets us affect the configuration of a system, without needing to edit a file in place, or carry a full configuration file in the image.
 
 
 Let's address the sudoers password first, by allowing users in the wheel group to not need to enter their password.
@@ -27,13 +27,16 @@ nano ~/bootc-base/etc/sudoers.d/10-wheel
 
 Add the following and save the file
 
-[source,text,role="execute",subs=attributes+]
+[source,shell,role="execute",subs=attributes+]
 ----
 # Enable passwordless sudo for the wheel group
 %wheel        ALL=(ALL)       NOPASSWD: ALL
 ----
 
-For some cloud provider serial consoles we need to update the ttyS0 definition
+For some cloud provider serial consoles we need to update the console definition.
+Typically this is handled by passing kernel parameters to the boot entry.
+For image mode systems, `/boot` is read-only, so we have support for passing kernel parameters via configuration files in `/usr/lib/bootc/kargs.d` as drop-ins.
+
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -42,7 +45,7 @@ nano ~/bootc-base/usr/lib/bootc/kargs.d/console_kargs.conf
 
 Add the following and save the file
 
-[source,text,role="execute",subs=attributes+]
+[source,shell,role="execute",subs=attributes+]
 ----
 kargs = ["console=tty0", "console=ttyS0,115200n8"]
 ----
@@ -64,11 +67,12 @@ We now have replaced the original image in the registry we used to create the vi
 
 [#update-vm]
 == Updating the virtual machine
+==== _Return to the tab labeled "Ops SSH session"_
 
 By default, image mode hosts ship with a timer that checks for and applies available updates.
 [source,bash,role="execute",subs=attributes+]
 ----
-systemctl list-timers
+systemctl list-timers --no-pager
 ----
 
 The timer will fire some random interval after boot.
@@ -76,8 +80,10 @@ This can be controlled via the Containerfile, we'll take a look at an example of
 
 [source,bash,role="execute",subs=attributes+]
 ----
-systemctl status bootc-fetch-apply-updates.timer
+systemctl status bootc-fetch-apply-updates.timer --no-pager
 ----
+
+TIP: If the terminal picks up underlining from the output, run `reset` in the terminal to clear it 
 
 Rather than wait for the timer to fire, go ahead and run `bootc update` by hand.
 (Reminder, the password for `sudo` is `redhat` as set in the customization blueprint)
@@ -109,7 +115,7 @@ Total new layers: 72    Size: 1.1 GB
 Removed layers:   69    Size: 2.1 GB
 Added layers:     72    Size: 1.1 GB
 ....
-NOTE: At the time of writing, the first update of an image mode host may be large. This is due to registry versus local storage when the disk image was created.
+NOTE: At the time of writing, the first update of an image mode host may be larger than just the layers changed at build time. This is due to registry versus local storage when the disk image was created.
 
 Let's check the current status of the host.
 [source,bash,role="execute",subs=attributes+]
@@ -128,7 +134,9 @@ sudo bootc status
 
 Updates to bootc hosts are offline in nature, meaning the new image has been readied for deployment, but no other changes have been made to the running system. 
 
-The last step for the change to take is to reboot the virtual machine. Before doing so, please make sure you are logged in to the virtual machine and not the hypervisor, the prompt should look like `[{vm_user}@localhost ~]$`.
+The last step for the change to take is to reboot the virtual machine. 
+
+TIP: Before doing so, please make sure you are logged in to the virtual machine and not the hypervisor, the prompt should look like `[core@localhost ~]$`.
 
 [source,bash,role="execute",subs=attributes+]
 ----
@@ -137,13 +145,36 @@ sudo systemctl reboot
 
 [#testing]
 == Testing the changes
-Log back into the VM and look for the kernel arguments we added via the `bootc` configuration path.
+==== _Log back into the VM by hitting the `reconnect` button or the reload icon next to the tab title._
+
+Look for the kernel arguments we added via the `bootc` configuration path.
+They should land at the end of the kernel command line.
 [source,bash,role="execute",subs=attributes+]
 ----
 cat /proc/cmdline
 ----
 
+The status now shows a rollback image instead of a staged image. 
+We'll explore what that means in a later exercise.
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc status
 ----
+....
+● Booted image: registry-z7ddq.apps.ocpvdev01.rhdp.net/base
+        Digest: sha256:1c0eba400508b300c956eb0923ea79a7042b490118aa5765d5019b3b886492b3 (amd64)
+       Version: 10.1 (2025-12-09T06:23:07Z)
+
+  Rollback image: registry-z7ddq.apps.ocpvdev01.rhdp.net/base
+          Digest: sha256:6a4855ce98f73498f046223c12230e5f4e79385559dc9d28f46b727a8f867c27 (amd64)
+         Version: 10.1 (2025-12-09T06:23:07Z)
+....
+Notice there's a new "rollback" image listed and the "staged" image is gone.
+We'll explore the idea of rollbacks later, but there are only ever three images available on an image mode host: the last booted, the current, and the next to be active.
+
+== Core principles
+So far, you've built an initial image, created some centrally managed configurations to be present on all systems, and published an updated bootc image.
+These are the basic operations for all image mode hosts.
+Most of the considerations between typical package mode "gold images" and image mode operations comes down to distinction between how changes are made and distributed.
+One of the design changes we mentioned in support of the new image based operations is the read only nature of certain parts of the host filesystems.
+We'll explore that in the next exercise.

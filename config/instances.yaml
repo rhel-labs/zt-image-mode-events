@@ -5,7 +5,7 @@ virtualmachines:
     bootloader: efi
     memory: "16G"
     cores: 8
-    image_size: "40G"
+    image_size: "50G"
     tags:
       - key: "AnsibleGroup"
         value: "bastions"
@@ -19,6 +19,7 @@ virtualmachines:
       - qemu-kvm
       - libvirt-nss
       - nano
+      - nginx
       - openscap-utils
       - scap-security-guide
     services:
@@ -34,6 +35,12 @@ virtualmachines:
             protocol: TCP
             targetPort: 443
             name: registry
+      - name: hostinfo
+        ports:
+          - port: 8080
+            protocol: TCP
+            targetPort: 8080
+            name: hostinfo
     routes:
       - name: registry-http
         host: registry
@@ -46,33 +53,13 @@ virtualmachines:
         service: registry
         targetPort: 443
         tls: true
+      - name: hostinfo
+        host: hostinfo
+        service: hostinfo
+        targetPort: 8080
+        tls: false
     terminals:
       - name: wetty_bootc_vm
         command: /root/.wait_for_bootc_vm.sh
-      - name: wetty_iso_vm
-        command: /root/.wait_for_iso_vm.sh
-
-  - name: "imrhel"
-    image: "rhel-10-0-07-09-25-3"
-    bootloader: efi
-    memory: "4G"
-    cores: 2
-    image_size: "40G"
-    tags:
-      - key: "AnsibleGroup"
-        value: "nodes"
-    networks:
-      - default
-    services:
-      - name: app
-        ports:
-          - port: 80
-            protocol: TCP
-            targetPort: 80
-            name: app
-    routes:
-      - name: app
-        host: app
-        service: app
-        targetPort: 80
-        tls: false
+      - name: wetty_security_vm
+        command: /root/.wait_for_security_vm.sh

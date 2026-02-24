@@ -21,6 +21,7 @@ EOF
 # Pull the needed images to minimize waiting during the lab
 BOOTC_RHEL_VER=10.1
 podman pull registry.redhat.io/rhel10/rhel-bootc:$BOOTC_RHEL_VER registry.redhat.io/rhel10/bootc-image-builder:$BOOTC_RHEL_VER
+podman pull quay.io/fedora/fedora-bootc:latest
 
 # Remove pull credentials
 # rm ~/.config/containers/auth.json
@@ -92,14 +93,14 @@ ssh core@${VM_NAME}
 EOF
 
 chmod u+x /root/.wait_for_bootc_vm.sh
-#
-# Script that manages the ISO SSH session tab
+
+# Script that manages the VM SSH session tab
 # Waits for the domain to start and networking before attempting to SSH to guest
-cat <<'EOF'> /root/.wait_for_iso_vm.sh
-echo "Waiting for VM 'iso-vm' to be running..."
+cat <<'EOF'> /root/.wait_for_security_vm.sh
+echo "Waiting for VM 'security-vm' to be running..."
 VM_READY=false
 VM_STATE=""
-VM_NAME=iso-vm
+VM_NAME=security-vm
 while true; do
     VM_STATE=$(virsh domstate "$VM_NAME" 2>/dev/null)
     if [[ "$VM_STATE" == "running" ]]; then
@@ -120,7 +121,7 @@ done
 ssh core@${VM_NAME}
 EOF
 
-chmod u+x /root/.wait_for_iso_vm.sh
+chmod u+x /root/.wait_for_security_vm.sh
 
 # Clone the git repo for the application to deploy
 git clone --single-branch --branch bootc https://github.com/rhel-labs/python-hostinfo.git /root/bootc-version
@@ -138,3 +139,4 @@ if [ -d $TMPDIR/${EXAMPLE} ]; then
 fi
 rm -rf $TMPDIR
 
+mkdir ~/scratch

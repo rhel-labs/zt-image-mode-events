@@ -1,0 +1,24 @@
+= Reproducible builds
+
+In addition to simplifying updates and providing native rollback, operating RHEL in image mode also 
+makes it simple to quickly change the purpose of a running system. This means experimenting with new 
+versions of application components or testing OS updates is as simple as applying any other image change.
+
+In this lab we'll explore this feature as well as expand on the idea of standardized builds and derived images.
+
+[#write-containerfiles]
+== Building from the standard base
+
+  vim Containerfile.bootc 
+  ARG SOURCE_DATE_EPOCH
+  ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-1}
+  podman build -t non-repro-1 -f Containerfile.bootc --no-cache
+  podman build -t non-repro-2 -f Containerfile.bootc --no-cache
+  podman inspect --format '{{.Digest}}' non-repro-1 non-repro-2
+  export SOURCE_DATE_EPOCH=  echo $SOURCE_DATE_EPOCH
+  podman build  --source-date-epoch=${SOURCE_DATE_EPOCH} --rewrite-timestamp \
+  -t repro-1 -f Containerfile.bootc --no-cache
+  podman build  --source-date-epoch=${SOURCE_DATE_EPOCH} --rewrite-timestamp \
+  -t repro-2 -f Containerfile.bootc --no-cache
+  podman inspect --format '{{.Digest}}' repro-1 repro-2
+

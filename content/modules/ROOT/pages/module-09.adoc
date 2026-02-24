@@ -17,9 +17,9 @@ For this example, we're going to add an SSH key to `root` in the image, somethin
 [#secrets]
 == Using podman secrets at build time
 
-So far, we've been copying ssh keys directly into files with editors, which is fine for exercises or a very small numbers of users. We will use an additional feature of `podman` to inject the credentials into the Containerfile using a more modern method like an external password vault. 
+So far, we've been copying ssh keys directly into files with editors, which is fine for exercises or a very small number of users. We will use an additional feature of `podman` to inject the credentials into the Containerfile using a more modern method like an external password vault.
 
-First, we'll set up a drop-in file that will configure SSHd to look for user authorized keys in a path controlled by the image. This gives us a way to update credentials later. The drop-in uses the `%u` username match in the search path, so a key that matches the username in `/usr/ssh` would act just like the typical `authorized_keys` file in their home directory. Like the `sudoers` drop-in, the `sshd_config.d` directory is where SSHd looks in it's config path for additional config files. 
+First, we'll set up a drop-in file that will configure sshd to look for user-authorized keys in a path controlled by the image. This gives us a way to update credentials later. The drop-in uses the `%u` username match in the search path, so a key that matches the username in `/usr/ssh` would act just like the typical `authorized_keys` file in their home directory. Like the `sudoers` drop-in, the `sshd_config.d` directory is where sshd looks in its config path for additional config files. 
 
 Create the expected directories we want to see in `/etc` on the host first. Since we're adding things to `/etc` that we want to control via the host, we need to be careful to avoid local changes to these drop-ins.
 [source,bash,role="execute",subs=attributes+]
@@ -27,7 +27,7 @@ Create the expected directories we want to see in `/etc` on the host first. Sinc
 mkdir -p etc/ssh/sshd_config.d
 ----
 
-Then add the additional configuration directive for SSHd to read.
+Then add the additional configuration directive for sshd to read.
 [source,bash,role="execute",subs=attributes+]
 ----
 nano etc/ssh/sshd_config.d/330-auth-system.conf
@@ -37,7 +37,7 @@ nano etc/ssh/sshd_config.d/330-auth-system.conf
 AuthorizedKeysFile /usr/ssh/%u.keys .ssh/authorized_keys .ssh/authorized_keys2
 ----
 
-The `podman build` command has an option to pass information into a build in a way that it doesn't get stored in the final image. It will read a file or an environment variable, and make the contents available during the build in a file under mounted under `/run/secrets` on the host. The arguments passed to `podman build --secret` will determine if the source of the secret is a file or an environment variable. To pass more than one secret, you add an additional `--secret` argument.
+The `podman build` command has an option to pass information into a build in a way that it doesn't get stored in the final image. It will read a file or an environment variable, and make the contents available during the build in a file mounted under `/run/secrets` on the host. The arguments passed to `podman build --secret` will determine if the source of the secret is a file or an environment variable. To pass more than one secret, you add an additional `--secret` argument.
 
 Inside the build, we can have a `RUN` directive read that file and do something with it. There's a `--mount` option for `RUN` that can be used for a lot of different things, but one of those options is a `secrets` mount type. There are other options for the `RUN` directive, but we'll keep it as simple as we can here.
 

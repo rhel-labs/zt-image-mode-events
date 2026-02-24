@@ -1,23 +1,23 @@
 = Build a bootc image
 In this exercise, you will see how to apply application container build concepts to a bootc image.
 
-The fundamental principle of image mode is applying a decade of container expertice and advancements to building operating system images.
+The fundamental principle of image mode is applying a decade of container expertise and advancements to building operating system images.
 This simple idea has a wide impact on how we think about OS design, working with 'gold images', working with other teams, addressing updates, and more.
 In this lab, we'll walk through the process of creating a new 'gold image' for an application.
-We'll start with the tools the operations team needs, add the requirements from the security team, and then get our applicaion ready for deployment.
-[#write]
-== Create the Containerfile
+We'll start with the tools the operations team needs, add the requirements from the security team, and then get our application ready for deployment.
 
 [NOTE]
 ====
 The instructions will reflect `nano` commands.
 
-In `nano`, you can save and exit with `Ctrl+x`, followed by the key `y` at the "Save modified buffer?" prompt 
-and the `Enter` key at the prompt to keep the filename.
+In `nano`, you can save and exit in one flow with `Ctrl+x`, following the prompts.
 
 The `vim` editor is also available. Users of `vim` should already know the basics
 of opening, saving and exiting the editor. 
 ====
+
+[#write]
+== Create the Containerfile
 
 Image mode hosts start with a standard Containerfile and the standard instructions. 
 The `FROM` line defines the starting point of the build. 
@@ -27,7 +27,11 @@ Adding software from a RHEL repo looks the same as any other `dnf` command, wrap
 Like other containers, subscription information is taken from the build host by default, so there's no additional subscription management needed here to get access.
 
 For our admins, we've got a list of common tools we need available on every host to integrate with the management and monitoring tools.
-Let's add some common tools now, PCP, remote syslogging, kernel tuning, and `tumux`.
+
+[TIP] 
+We'll be adding a few different sections to the same file, you can save at the end or as you go
+
+Let's add some common tools now, PCP, remote syslogging, kernel tuning, and `tmux`.
 `RUN` directives act like shell commands, so this looks like any other command spread over multiple lines for readability.
 
 First, let's create a directory tree that we will base all of our work out of. This is where all of our configuration and the `Containerfile` will live. 
@@ -78,10 +82,18 @@ RUN dnf -y install pcp-zeroconf \
 
 Some tools we need may come from 3rd party repositories, either community or project repos like `EPEL` or repos you maintain for your own applications.
 Repos can be added directly to the image instead of the build host, allowing us better control over software available.
+We can even alter the repo file to update mirror lists.
+
 Install the `EPEL` repo RPM, and 2 additional admin favorites.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+
+RUN sed -e '/^metalink=https:\/\/mirrors.fedoraproject.org\/metalink/ s/^/#/' \
+    -e '/^#baseurl=http:/ s/http/https/' \
+    -e '/^#baseurl=https:\/\/download.example/ s/^#//' \
+    -e '/^baseurl=https:\/\/download.example/ s_https://download.example_https://dl.fedoraproject.org_' \
+    -i /etc/yum.repos.d/epel*.repo
 
 RUN dnf -y install btop iftop
 ----
@@ -158,7 +170,7 @@ And now we can push this image to the tagged registry with:
 podman push registry-{guid}.{domain}/base
 ----
 
-You have now built your first complete RHEL image as a bootc image!
+You have now built your first complete RHEL system as a bootc image!
 The standard Red Hat bootc base image includes not just the kernel, firmware, bootloader, and other tools not required for a traditional container, but also common other tools and dependencies like SSH, NetworkManager, and more.
 This separates the bootc base image from other Red Hat provided images like UBI.
 
