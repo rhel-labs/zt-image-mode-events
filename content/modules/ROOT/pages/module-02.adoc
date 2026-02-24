@@ -86,6 +86,16 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.
 RUN dnf -y install btop iftop
 ----
 
+We can also add in the directory structures from above, so that future updates to etc, and usr, will be automatically added when we rebuild the image. 
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+COPY etc/ /etc
+COPY usr/ /usr
+----
+
+At this point you can save and exit your editor.  
+
 [#registry authentication]
 == Authenticating to a registry
 Container images commonly live in a container registry.  In the majority of cases this is also true for Image Mode images, because they are OCI compliant container images, they just contain the added bits required to be bootable.  
@@ -111,11 +121,11 @@ This can be useful as users may have personal credentials for a number of differ
 podman login -u core -p redhat registry-{guid}.{domain} --authfile=auth.json
 ----
 
-With the authfile created, we can add this to the Containerfile.
+And now we simply place it inside of the tree we created above. 
 
-[source,dockerfile,role="execute",subs=attributes+]
+[source,bash,role="execute",subs=attributes+]
 ----
-COPY auth.json /etc/ostree/auth.json
+mv auth.json etc/ostree/auth.json
 ----
 
 [#build]

@@ -38,6 +38,7 @@ in the `key` field with the contents of public key from your system.
 
 [source,bash,role="execute",subs=attributes+]
 ----
+cd ~
 nano config.toml
 ----
 
