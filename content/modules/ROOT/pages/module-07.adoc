@@ -16,10 +16,11 @@ The `autotailor` command comes from the `openscap-utils` package, and requires t
 
 [source,bash,role="execute",subs=attributes+]
 ----
-autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login \ <.>
-  --new-profile-id cis_server_l1_customized \ <.> 
-  --output cis_server_l1_customized.xml \ <.>
-  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml cis_server_l1 <.>
+cd ~/bootc-base
+autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login \
+  --new-profile-id cis_server_l1_customized \
+  --output cis_server_l1_customized.xml \
+  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml cis_server_l1
 ----
 <.> The rule to deselect
 <.> The new policy name to use
@@ -34,6 +35,12 @@ This tool is also part of the `openscap-utils` package and is specially designed
 Remember, labels are for humans, so adding something about the compliance configuration that can be read from the registry or locally without starting or examining a running host is helpful.
 
 Open up the Containerfile, and then add the following after the `systemctl enable` line.
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
+
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 LABEL profile="CIS Server Level 1 base image"

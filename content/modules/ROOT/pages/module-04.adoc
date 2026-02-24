@@ -22,7 +22,8 @@ Let's address the sudoers password first, by allowing users in the wheel group t
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano ~/bootc-base/etc/sudoers.d/10-wheel
+cd ~/bootc-base
+nano etc/sudoers.d/10-wheel
 ----
 
 Add the following and save the file
@@ -40,7 +41,7 @@ For image mode systems, `/boot` is read-only, so we have support for passing ker
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano ~/bootc-base/usr/lib/bootc/kargs.d/console_kargs.conf
+nano usr/lib/bootc/kargs.d/console_kargs.conf
 ----
 
 Add the following and save the file
