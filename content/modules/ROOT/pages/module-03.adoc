@@ -137,7 +137,7 @@ NOTE: The terminal pages for the KVM guests have a script that will wait for SSH
 
 [#test]
 == Testing the virtual machine
-==== _Click on the tab labeled "Ops SSH session"_ 
+==== **Click on the tab labeled "Ops SSH session"** 
 
 Once the script detects SSH is running, you should be automatically logged in as the `core` user created in the `bootc-image-builder` customization. 
 ....
