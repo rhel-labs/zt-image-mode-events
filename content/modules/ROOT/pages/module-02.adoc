@@ -140,6 +140,45 @@ And now we simply place it inside of the tree we created above.
 mv auth.json etc/ostree/auth.json
 ----
 
+While we're talking about best practices, and properly organizing our Containerfile, let's also talk about some container metadata. 
+
+== Additional labels and metadata
+One of the benefits of containerized builds is extra metadata available by default.
+Instead of relying on naming conventions or `bootc status` output, we can add information to the images via labels.
+
+Let's add some basic information, the contact email for the team who owns the image and the "vendor", here our company.
+These will be added and can be queried remotely in the registry.
+There are other labels that are created by Red Hat when published that include RHEL version and more.
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
+
+These can go anywhere, but typically they will be near the start of the Containerfile, after the `FROM` line.
+Remember, like any other container image build, `bootc` image builds will also use the local build cache.
+If you place these before the package install you will trigger all of those steps in the build.
+[source,dockerfile,role="execute",subs=attributes+]
+----
+# Set up some variables and labels to ID images in our environments
+MAINTAINER sysadmins@example.com
+# RHEL version inherited from bootc base as redhat.version-id and release
+LABEL vendor="Example Corp" 
+----
+
+== Managing automatic updates
+There is a systemd timer that will periodically check for bootc updates.  This can be configured, or disabled based on your orgnaization's perferences.  
+In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
+One simple way to disable the timer is to mask the service with `systemd`. 
+This will ensure that the service isn't unexpectedly enabled after a change or update.
+Since this is a systemd timer, you can manage and modify the definition to fit your environment by creating a new service file.
+[source,dockerfile,role="execute",subs=attributes+]
+----
+RUN systemctl mask bootc-fetch-apply-updates.timer
+----
+
+Now we can move along and build our bootc image.
+
 [#build]
 == Build the first bootc image
 
