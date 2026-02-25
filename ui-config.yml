@@ -21,9 +21,6 @@ antora:
     - name: "module-06"
       label: "Adding security and compliance requirements"
       solveButton: false
-    - name: "module-07"
-      label: "Applying OpenSCAP policies"
-      solveButton: false
     - name: "module-08"
       label: "Adding Troubleshooting tools"
       solveButton: false
@@ -57,7 +54,6 @@ tabs:
     url: /wetty_security_vm/ssh/root
     modules:
       - module-06
-      - module-07
       - module-08
       - module-11
       - module-12
