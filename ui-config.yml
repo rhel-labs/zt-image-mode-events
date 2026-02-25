@@ -15,9 +15,6 @@ antora:
     - name: "module-04"
       label: "Updating image mode hosts"
       solveButton: false
-    - name: "module-05"
-      label: "Rolling back an image mode host"
-      solveButton: false
     - name: "module-06"
       label: "Adding security and compliance requirements"
       solveButton: false
@@ -48,7 +45,6 @@ tabs:
       - module-02
       - module-03
       - module-04
-      - module-05
       - module-10
   - name: ">_ Sec SSH session"
     url: /wetty_security_vm/ssh/root
