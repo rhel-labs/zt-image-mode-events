@@ -161,7 +161,7 @@ If you place these before the package install you will trigger all of those step
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Set up some variables and labels to ID images in our environments
-MAINTAINER sysadmins@example.com
+LABEL org.opencontainers.image.authors="sysadmins@example.com"
 # RHEL version inherited from bootc base as redhat.version-id and release
 LABEL vendor="Example Corp" 
 ----
