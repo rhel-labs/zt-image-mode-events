@@ -172,6 +172,8 @@ In this lab, we don't want the timer updating the host unexpectedly, and you may
 One simple way to disable the timer is to mask the service with `systemd`. 
 This will ensure that the service isn't unexpectedly enabled after a change or update.
 Since this is a systemd timer, you can manage and modify the definition to fit your environment by creating a new service file.
+
+You could place this almost anywhere after the FROM line, but let's palce it after the COPY commands where we're copying in `etc` and `usr`, at the end of our `Containerfile`
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 RUN systemctl mask bootc-fetch-apply-updates.timer
