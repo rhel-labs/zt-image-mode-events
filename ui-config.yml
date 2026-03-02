@@ -30,12 +30,6 @@ antora:
     - name: "module-12"
       label: "Exploring container build practices"
       solveButton: false
-    - name: "module-13"
-      label: "Derived builds and updating the chain"
-      solveButton: false
-    - name: "module-14"
-      label: "Extra credit module: Scratch builds"
-      solveButton: false
 tabs:
   - name: "Build host terminal"
     url: /wetty/ssh/root
@@ -53,4 +47,3 @@ tabs:
       - module-08
       - module-11
       - module-12
-      - module-13
