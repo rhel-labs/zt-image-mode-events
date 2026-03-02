@@ -1,219 +1,112 @@
-= Security and Compliance in an Image Mode world.
+= Build vs run considerations
+One of the concepts that will continue to come to surface when exploring image mode is when to centralize something at build time vs customize at run time.
+The design goal is to push as much _as possible_ to build time and increase reuse.
+However, run time changes are always required for instances, even if only for networking and hostnames.
+Image mode offers another way to address run time changes temporarily.
 
-Building and deploying using Image Mode has some built-in benefits from a security and compliance perspective.  
-First, systems deployed with Image Mode are more likely to be built to your desired specifications, and second it is much easier to make sure that they stay that way.  
-In the next few modules we'll walk through how to add security and compliance into your build, and also how to apply that policy using automation.  
-We will also touch a bit on drift and getting your systems back into compliance after an event.
+== Installing troubleshooting tools
+It happens, we know.  
+Different teams have different tools that are only used occasionally for various reasons.
+Maybe it's troubleshooting, or gathering information for a support request, or just to carry out some task on your servers.  
 
-[NOTE] 
-====
-Because we will be making significant changes to our system, we are going to start fresh.  First we will build an updated bootc image, and then we will build a new guest vm just like we did at the beginning of the lab.
-====
+Imagine it, you're asked to get a packet capture to troubleshoot some network latency issue.  So you install tcpdump, and do your work.  Did you remember to remove it afterward?  Or another example, you install netcat to test some firewall ports, and then there it is, ready for an attacker to leverage for a reverse shell.  These are core examples of why package drift can be a bad thing.
 
-== Adding security controls to your image: FAPolicyd
-==== _Click on the tab labeled "Build host"_ 
-One of the common services the security team uses to meet compliance and security mandates is FAPolicyD.
-The File Access Policy Daemon is a service that implements application allow-listing.  So let's see what it looks like to simply add it to our `Containerfile`.  
+In RHEL package mode this is simple, you do a dnf install, and you're done. This however introduces drift.  It can also be a concern from a security and compliance perspective, and be hard to do on a temporary basis.
+Luckily RHEL Image Mode helps you control package drift by moving package installs into your image creation. 
 
-NOTE: We will be adding these changes after the `systemctl mask` line at the end of the existing file
+But should you even add those to your bootc image? No!
+These are usually one off needs, and carrying them as part of a gold image increases maintenance and could increase security risk.
+Instead, you can install them transiently, and then they will go away on their own the next time the system is imaged, updated, or even rebooted. 
 
-[source,bash,role="execute",subs=attributes+]
-----
-cd ~/bootc-base
-nano Containerfile
-----
-
-
-FAPolicyD is one of the standard tools the security team asked for, including the audit subsystem and SELinux troubleshooting. We'll also install the packages for the SCAP policy tools now since we know that's coming.
-
-[source,dockerfile,role="execute",subs=attributes+]
-----
-# Security and Hardening 
-RUN dnf -y install audit fapolicyd openscap-utils scap-security-guide setroubleshoot-server
-
-RUN systemctl enable fapolicyd
-----
-
-Notice the only thing that needs to be defined to get FAPolicyD running at boot is a standard `systemctl` call.
-Since we are targeting full RHEL systems and not containers, systemd is always running and available post-install so there's no need for any additional `init` environments or `ENTRYPOINT` definitions.
- 
-
-= Building policy into a bootc image
-
-Now, we could add all of the various packages and configuration changes directly to our Containerfile and achieve the security team's goals.  But, much like a package mode RHEL host, we can leverage automation to get the bulk of the work done using SCAP policies. 
-
-== Tailoring SCAP for compliance
-==== _Click on the tab labeled "Build host terminal"_ 
-
-The security team uses the CIS Level 1 policy with some deviations for all public facing webservers.
-To setup our openscap policy, we will first make a change to the policy using `autotailor`. 
-You will likely need to tailor any compliance policy to your organization's needs as these aren't one size fits all.
-In our example we are simply turning root logins back on so as not to break the lab environment. 
-
-To do this, we will tailor our policy right on our build host.
-Tailoring files are a common format and as long as they are built against the right policy, they can be created on any host.
-The `autotailor` command comes from the `openscap-utils` package, and requires that the `scap-security-guide` is also installed.
-
-[source,bash,role="execute",subs=attributes+]
-----
-cd ~/bootc-base
-autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login \
-  --new-profile-id cis_server_l1_customized \
-  --output cis_server_l1_customized.xml \
-  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml cis_server_l1
-----
-<.> The rule to deselect
-<.> The new policy name to use
-<.> The name of the policy file to write
-<.> The original policy to tailor
-
-Then we'll modify our Containerfile, removing the line where we enable FAPolicyd, and replacing it with an oscap policy block. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here. This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
-
-We'll use the new `oscap-im` tool to scan and remediate the image at build time.
-This tool is also part of the `openscap-utils` package and is specially designed for operating inside a containerized build.
-
-Remember, labels are for humans, so adding something about the compliance configuration that can be read from the registry or locally without starting or examining a running host is helpful.
-
-Open up the Containerfile, and then add the following after the `systemctl enable` line.
-
-[source,bash,role="execute",subs=attributes+]
-----
-nano Containerfile
-----
-
-[source,dockerfile,role="execute",subs=attributes+]
-----
-LABEL profile="CIS Server Level 1 base image"
-ENV profileID=cis_server_l1_customized <.>
-
-COPY $profileID.xml /tmp/$profileID.xml
-RUN oscap-im --profile $profileID --tailoring-file /tmp/$profileID.xml /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml <.>
-----
-<.> An environment variable to define the policy to apply
-<.> The new `oscap-im` command using our tailored policy
-
-With that in place, we can build our bootc image again. 
-
-[source,bash,role="execute",subs=attributes+]
-----
-podman build --file Containerfile --tag registry-{guid}.{domain}/base
-----
-As the bootc image builds, you will see output similar to this as the openscap profile is getting applied to the image. 
-....
-xccdf_org.ssgproject.content_rule_package_aide_installed:pass
-xccdf_org.ssgproject.content_rule_aide_build_database:fail
-xccdf_org.ssgproject.content_rule_aide_check_audit_tools:fail
-xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking:fail
-xccdf_org.ssgproject.content_rule_configure_crypto_policy:pass
-xccdf_org.ssgproject.content_rule_configure_ssh_crypto_policy:pass
-xccdf_org.ssgproject.content_rule_partition_for_dev_shm:notapplicable
-xccdf_org.ssgproject.content_rule_partition_for_tmp:notapplicable
-xccdf_org.ssgproject.content_rule_dconf_db_up_to_date:notapplicable
-....
-
-After it completes, push the new image.
-
-[source,bash,role="execute",subs=attributes+]
-----
-podman push registry-{guid}.{domain}/base
-----
-
-Since we've added a few labels now, let's use `skopeo` to pull them from the latest image and use `jq` to pretty up the output.
-[source,bash,role="execute",subs=attributes+]
-----
-skopeo inspect --format '{{json .Labels }}' docker://registry-{guid}.{domain}/base | jq
-----
-There's quite a few labels applied by default that describe RHEL version, architecture, creation dates, release info, and if this is in fact a bootc image. There's also our CIS profile and our company name as the vendor.
-
-Now that we have our new image built, let's build a new system using this new image, and see how it measures up to our securuty expectations.
-
-
-== Build the VM
-
-Now, we can build a new disk image, and start our new VM. 
-
-[source,bash,role="execute",subs=attributes+]
-----
-cd ~
-podman run --rm --privileged --security-opt label=type:unconfined_t \
-  --volume ./config.toml:/config.toml \
-  --volume /var/lib/containers/storage:/var/lib/containers/storage \
-  --volume .:/output \
-  registry.redhat.io/rhel10/bootc-image-builder:10.1 \
-  --type qcow2 \
-  registry-{guid}.{domain}/base
-----
-
-Now let's copy that disk image to the proper location.  
-[source,bash,role="execute",subs=attributes+]
-----
-cp -f qcow2/disk.qcow2 /var/lib/libvirt/images/security-vm.qcow2
-----
-
-Now we can build that the same way we created the Ops VM.
-
-[source,bash,role="execute",subs=attributes+]
-----
-virt-install --name security-vm \
-  --disk /var/lib/libvirt/images/security-vm.qcow2 \
-  --import \
-  --memory 4096 \
-  --graphics none \
-  --osinfo rhel10-unknown \
-  --noautoconsole \
-  --noreboot
-----
-
-After that completes, you will need to start up security-vm, and then you will find the new system in the Sec SSH session tab.
-
-[source,bash,role="execute",subs=attributes+]
-----
-virsh start security-vm
-----
-
-== Testing FAPolicyd
+== Transient package installs
 ==== _Click on the tab labeled "Sec SSH session"_ 
 
-If you recall, our first task was to enable fapolicyd directly, let's see if its working. 
-
-The File Access Policy daemon's job is to prevent you from running unapproved applications.  Out of the box, it does this using a relatively simple application allow-list that has known trusted paths for installed binaries.  
+Let's say you needed to install netcat, like in the example above.
+Normally you'd just use `dnf`:
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo fapolicyd-cli -l
+sudo dnf -y install netcat
 ----
-
-Since the system software deployed on an image mode host is part of a read-only filesystem, we can't simply overwrite a binary with a trusted path.
-To test whether it's working, we can just take a known good binary, and put it somewhere odd, and then try to run it. 
-
-[source,bash,role="execute",subs=attributes+]
-----
-cp /bin/ls ~
-----
-
-You should not be allowed to run `ls` from your home directory. 
-[source,bash,role="execute",subs=attributes+]
-----
-~/ls
-----
+A standard dnf install will result in an error:
 ....
--bash: /home/core/ls: Operation not permitted
+This bootc system is configured to be read-only. Pass --transient to perform this transaction in a transient overlay which will reset when the system reboots.
+Operation aborted.
 ....
 
-Great! FAPolicyd works!  
+There is a special flag that tells `dnf` to install a package on an image mode host.
+[source,bash,role="execute",subs=attributes+]
+----
+sudo dnf -y install --transient netcat
+----
+Now you can reverse-shell all day long if you'd like. 
 
-We also went a step further, and applied an entire SCAP policy.  The OpenSCAP tooling also allows us to test a system for compliance, so we can use that tool to see if the policy was applied as we expected it to be when the container was built. 
+This creates a new temporary overlay filesystem to make a writable `/usr` so `dnf` can make changes to the RPM database and install the binaries in the standard locations
+[source,bash,role="execute",subs=attributes+]
+----
+df -Th | grep -v /run
+----
+....
+Filesystem     Type      Size  Used Avail Use% Mounted on
+composefs      overlay   8.1M  8.1M     0 100% /
+/dev/vda4      xfs       8.5G  2.9G  5.7G  34% /etc
+devtmpfs       devtmpfs  1.9G     0  1.9G   0% /dev
+tmpfs          tmpfs     2.0G     0  2.0G   0% /dev/shm
+tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
+/dev/vda3      xfs       960M  157M  804M  17% /boot
+/dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
+overlay        overlay   8.5G  2.9G  5.7G  34% /usr
+....
+
+You can install more packages with this overlay active.
+[source,bash,role="execute",subs=attributes+]
+----
+sudo dnf -y install --transient pshark
+----
+Troubleshooting can sometimes be chaotic, and you're installing tools to help you gather your data.  It can be difficult to keep track of, and then remove all of those packages when you're done.  With a transient package though, all it takes is a reboot, and the package is gone. 
 
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_server_l1 --results ./results  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml
+nc -h
 ----
+Now you see it. 
+
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo grep score results
+sudo reboot
 ----
-You should see a score in the 90's like the output below:
+
+NOTE: Rebooting will disconnect your tab from the security-vm system, simply press the 'reconnect' button in the center of the terminal to re-establish your session
+
+After the system is rebooted, you can try to run netcat all you'd like, it's gone. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+nc -l 4242 | /bin/bash
+----
 ....
-    <score system="urn:xccdf:scoring:default" maximum="100.000000">92.530121</score>
+-bash: nc: command not found
 ....
 
-Great!  Now we have an immutable OS, that matches our standards.  But, what do we do about that inevitable drift?  In the next module we'll address that.
+And the overlay for `/usr` is also gone
+[source,bash,role="execute",subs=attributes+]
+----
+df -Th | grep -v /run
+----
+....
+Filesystem     Type      Size  Used Avail Use% Mounted on
+composefs      overlay   8.1M  8.1M     0 100% /
+/dev/vda4      xfs       8.5G  2.9G  5.7G  34% /etc
+devtmpfs       devtmpfs  1.9G     0  1.9G   0% /dev
+tmpfs          tmpfs     2.0G     0  2.0G   0% /dev/shm
+tmpfs          tmpfs     2.0G     0  2.0G   0% /tmp
+/dev/vda3      xfs       960M  157M  804M  17% /boot
+/dev/vda2      vfat      501M  8.8M  492M   2% /boot/efi
+....
+
+This can be useful for all sorts of tools that are only temporarily or sporadically needed for troubleshooting or other reasons, like security scans.
+
+== Core principles
+Centralizing package control at the image layer is useful, but sometimes local changes are needed.
+Image mode provides unique ways to temporarily provide packages or other local changes.
+
+We'll continue the troubleshooting theme in the next section, looking at the developer's recent image mode Containerfile.
