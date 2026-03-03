@@ -39,11 +39,11 @@ tabs:
       - module-02
       - module-03
       - module-04
-      - module-10
+      - module-07
   - name: ">_ Sec SSH session"
     url: /wetty_security_vm/ssh/root
     modules:
+      - module-05
       - module-06
       - module-08
-      - module-11
-      - module-12
+      - module-09
