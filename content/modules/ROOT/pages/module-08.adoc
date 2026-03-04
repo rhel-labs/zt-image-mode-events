@@ -108,7 +108,7 @@ nano Containerfile
 
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-FROM registry-{guid}.apps.ocpvdev01.rhdp.net/base
+FROM registry-{guid}.{domain}/base
 ----
 
 Since this is a new version of the application, let's add the tag `v2` to the image name.
