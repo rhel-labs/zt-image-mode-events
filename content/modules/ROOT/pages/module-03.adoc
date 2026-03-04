@@ -26,6 +26,7 @@ You'll be replacing "SSHKEY" placeholder in the `key` field with the contents of
 
 [source,bash,role="execute",subs=attributes+]
 ----
+cd ~
 nano config.toml
 ----
 

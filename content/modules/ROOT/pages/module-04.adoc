@@ -22,7 +22,8 @@ Let's address the sudoers password first, by allowing users in the wheel group t
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano 10-wheel
+cd ~/bootc-base
+nano etc/sudoers.d/10-wheel
 ----
 
 Add the following and save the file
@@ -40,7 +41,7 @@ For image mode systems, `/boot` is read-only, so we have support for passing ker
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano console_kargs.toml
+nano usr/lib/bootc/kargs.d/console_kargs.conf
 ----
 
 Add the following and save the file
@@ -50,71 +51,8 @@ Add the following and save the file
 kargs = ["console=tty0", "console=ttyS0,115200n8"]
 ----
 
-Now that we have our new configs, we can add them to the end of the Containerfile and rebuild the image.
+Now that we have our new configs, we will need to rebuild the image.  But we do not need to change the `Containerfile` because earlier we create the `etc/` and `usr/` structures, and added them to our `Containerfile`.  Now any changes added to these trees will get added as soon as we rebuild the image. 
 
-[source,bash,role="execute",subs=attributes+]
-----
-nano Containerfile
-----
-
-[source,dockerfile,role="execute",subs=attributes+]
-----
-# Add image controlled configs
-COPY 10-wheel /etc/sudoers.d/wheel
-COPY console_kargs.toml /usr/lib/bootc/kargs.d/05-cloud-kargs.toml
-----
-
-Use the same command to build this updated image as the initial build.
-Since we added new steps to the end of the Containerfile, `podman` will reuse the previously built layers rather than rebuild the entire image.
-
-[source,bash,role="execute",subs=attributes+]
-----
-podman build --file Containerfile --tag registry-{guid}.{domain}/base
-----
-
-[#distribute]
-== Distributing the bootc image
-
-We used local storage to create our virtual machine image, but to update a running host we need a different way to make images available to running hosts.
-Now that we have a full operating system in a standard OCI container image, we can use standard container registries to host and distribute our OS images. 
-
-We have a registry available within the lab environment we can push our image to:
-
-[source,bash,role="execute",subs=attributes+]
-----
-podman push registry-{guid}.{domain}/base
-----
-....
-Error: trying to reuse blob sha256:7c1862f54f1a8b765bb4f3c6763cfc512d00bfe4fa3246fbcf38c273489a9be1 at destination: checking whether a blob sha256:7c1862f54f1a8b765bb4f3c6763cfc512d00bfe4fa3246fbcf38c273489a9be1 exists in registry-mjghb.apps.ocpvdev01.rhdp.net/base: authentication required
-....
-
-It's common for enterprise registries to require some sort of authentication to push or pull images. 
-We can log in and cache credentials in our shell, but that won't work for the image mode hosts.
-
-[source,bash,role="execute",subs=attributes+]
-----
-podman login -u core -p redhat registry-{guid}.{domain}
-----
-
-To create system credentials, we'll reuse the user login, but typically some sort of service account would be used.
-In any case, the files are identical, and can be published in the image. This will allow a newly created image mode host to update immediately after install.
-
-=== Distributing pull secrets
-
-The credentials are on disk, but in the user cache.
-The `podman login` command can also generate a file for a single registry. 
-This can be useful as users may have personal credentials for a number of different registries and we don't want to accidentally include or leak these into different environments.
-[source,bash,role="execute",subs=attributes+]
-----
-podman login -u core -p redhat registry-{guid}.{domain} --authfile=auth.json
-----
-
-With the authfile created, we can add this to the Containerfile.
-Since we've made a change to our definition, we need to rebuild the image.
-[source,dockerfile,role="execute",subs=attributes+]
-----
-COPY auth.json /etc/ostree/auth.json
-----
 [source,bash,role="execute",subs=attributes+]
 ----
 podman build --file Containerfile --tag registry-{guid}.{domain}/base
@@ -132,60 +70,20 @@ We now have replaced the original image in the registry we used to create the vi
 == Updating the virtual machine
 ==== _Return to the tab labeled "Ops SSH session"_
 
-By default, image mode hosts ship with a timer that checks for and applies available updates.
-[source,bash,role="execute",subs=attributes+]
-----
-systemctl list-timers --no-pager
-----
-
-The timer will fire some random interval after boot.
-This can be controlled via the Containerfile, we'll take a look at an example of this later.
-
-[source,bash,role="execute",subs=attributes+]
-----
-systemctl status bootc-fetch-apply-updates.timer --no-pager
-----
-
-TIP: If the terminal picks up underlining from the output, run `reset` in the terminal to clear it 
-
-Rather than wait for the timer to fire, go ahead and run `bootc update` by hand.
 (Reminder, the password for `sudo` is `redhat` as set in the customization blueprint)
 [source,bash,role="execute",subs=attributes+]
 ----
 sudo bootc update
 ----
+
+[NOTE]
+====
+If we had not included the registry authentication file in our base image, we would have received an error message similar to the following.  But because we had the forethought to add the `auth.json` file, our update should work properly.
+====
 ....
 error: Upgrading: Preparing import: Fetching manifest: failed to invoke method OpenImage: reading manifest latest in registry-mjghb.apps.ocpvdev01.rhdp.net/base: authentication required
 ....
 
-==== Immutable vs mutable directories
-Since we created this VM before we added the credentials to the image, we need to create them manually.
-One of the important details of image mode operations is how host filesystems are treated.
-The `/etc` directory can be updated either via the image or via the running host.
-This allows for central control with local overrides.
-During an update, `bootc` will compare the incoming `/etc` to the host `/etc` to determine what changes to make.
-If there have been local updates, those will be preserved, otherwise the new file will be installed.
-We've written more about this https://developers.redhat.com/articles/2025/08/25/what-image-mode-3-way-merge['3-way merge' process,window=_blank] and the implications for image mode hosts.
-[source,bash,role="execute",subs=attributes+]
-----
-sudo podman login -u core -p redhat registry-{guid}.{domain} --authfile=/etc/ostree/auth.json
-----
-
-[source,bash,role="execute",subs=attributes+]
-----
-file /etc/ostree/auth.json
-----
-....
-/etc/ostree/auth.json: regular file, no read permission
-....
-
-=== Deploying the update
-With the system credentials in place, try the update again.
-(Reminder, the password for `sudo` is `redhat`)
-[source,bash,role="execute",subs=attributes+]
-----
-sudo bootc update
-----
 
 Notice that `bootc update` provides information about the layers that have been modified and a progress indicator. The update mechanism also uses container tools to pull the image from the registry to the host for preparation. This means we only pull down the layers that were changed, not the full image if not needed. Later versions of `bootc` will expand this idea of delta updated to further reduce the time and bandwidth used for updates.
 

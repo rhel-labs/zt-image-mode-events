@@ -33,6 +33,38 @@ We'll be adding a few different sections to the same file, you can save at the e
 
 Let's add some common tools now, PCP, remote syslogging, kernel tuning, and `tmux`.
 `RUN` directives act like shell commands, so this looks like any other command spread over multiple lines for readability.
+
+First, let's create a directory tree that we will base all of our work out of. This is where all of our configuration and the `Containerfile` will live. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir ~/bootc-base
+----
+
+Now, inside of this base directory, we'll create a tree where our other confiration files will live as we build out our base image.
+
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir -p ~/bootc-base/etc/sudoers.d
+----
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir -p ~/bootc-base/etc/ostree
+----
+[source,bash,role="execute",subs=attributes+]
+----
+mkdir -p ~/bootc-base/usr/lib/bootc/kargs.d
+----
+
+From here on, work done on our build host will be done within this base directory. So let's switch to it now. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+cd ~/bootc-base
+----
+
+Now, we can start creating our `Containerfile`.
+
 [source,bash,role="execute",subs=attributes+]
 ----
 nano Containerfile
@@ -66,7 +98,88 @@ RUN sed -e '/^metalink=https:\/\/mirrors.fedoraproject.org\/metalink/ s/^/#/' \
 RUN dnf -y install btop iftop
 ----
 
-Save the Containerfile before building in the next step.
+We can also add in the directory structures from above, so that future updates to etc, and usr, will be automatically added when we rebuild the image. 
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+COPY etc/ /etc
+COPY usr/ /usr
+----
+
+At this point you can save and exit your editor.  
+
+[#registry authentication]
+== Authenticating to a registry
+Container images commonly live in a container registry.  In the majority of cases this is also true for Image Mode images, because they are OCI compliant container images, they just contain the added bits required to be bootable.  
+
+Many times an enterprise registry will also require authentication.  In this lab, we have setup a registry as well, and it does require authentication.  
+
+We can log in and cache credentials in our shell, but that won't work for the image mode hosts.
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman login -u core -p redhat registry-{guid}.{domain}
+----
+
+To create system credentials, we'll reuse the user login, but typically some sort of service acccount would be used.
+
+In any case, the authentication files are identeical, and can be published in the image. This will allow a newly created image mode host to update immediately after install, because it already has cached registry credentials.
+
+When you interactively login using `podman login`, your registry credendials are stored on disk, but the `podman login` command can also generate a file for a single registry. 
+
+This can be useful as users may have personal credentials for a number of different registries and we don't want to accidentally include or leak these into different environments.
+[source,bash,role="execute",subs=attributes+]
+----
+podman login -u core -p redhat registry-{guid}.{domain} --authfile=auth.json
+----
+
+And now we simply place it inside of the tree we created above. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+mv auth.json etc/ostree/auth.json
+----
+
+While we're talking about best practices, and properly organizing our Containerfile, let's also talk about some container metadata. 
+
+== Additional labels and metadata
+One of the benefits of containerized builds is extra metadata available by default.
+Instead of relying on naming conventions or `bootc status` output, we can add information to the images via labels.
+
+Let's add some basic information, the contact email for the team who owns the image and the "vendor", here our company.
+These will be added and can be queried remotely in the registry.
+There are other labels that are created by Red Hat when published that include RHEL version and more.
+
+[source,bash,role="execute",subs=attributes+]
+----
+nano Containerfile
+----
+
+These can go anywhere, but typically they will be near the start of the Containerfile, after the `FROM` line.
+Remember, like any other container image build, `bootc` image builds will also use the local build cache.
+If you place these before the package install you will trigger all of those steps in the build.
+[source,dockerfile,role="execute",subs=attributes+]
+----
+# Set up some variables and labels to ID images in our environments
+LABEL org.opencontainers.image.authors="sysadmins@example.com"
+# RHEL version inherited from bootc base as redhat.version-id and release
+LABEL vendor="Example Corp" 
+----
+
+== Managing automatic updates
+There is a systemd timer that will periodically check for bootc updates.  This can be configured, or disabled based on your orgnaization's perferences.  
+In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
+One simple way to disable the timer is to mask the service with `systemd`. 
+This will ensure that the service isn't unexpectedly enabled after a change or update.
+Since this is a systemd timer, you can manage and modify the definition to fit your environment by creating a new service file.
+
+You could place this almost anywhere after the FROM line, but let's palce it after the COPY commands where we're copying in `etc` and `usr`, at the end of our `Containerfile`
+[source,dockerfile,role="execute",subs=attributes+]
+----
+RUN systemctl mask bootc-fetch-apply-updates.timer
+----
+
+Now we can move along and build our bootc image.
 
 [#build]
 == Build the first bootc image
@@ -87,10 +200,15 @@ You will see `podman` process each line of the Containerfile just as it would fo
 
 [source,subs=attributes+]
 ----
-COMMIT registry-q4j7p.apps.ocpvdev01.rhdp.net/base
---> d9ff3463a72e
-Successfully tagged registry-q4j7p.apps.ocpvdev01.rhdp.net/base:latest
-d9ff3463a72e5a060decf9d20fd5fe9887763f395c9a7ad869c1f6d2600a2b85
+Successfully tagged registry-{guid}.{domain}/httpd
+f1bea10eb37acf2e78a9b01c6242110c1901adbaf40dbce479241c6c735c58da
+----
+
+And now we can push this image to the tagged registry with:
+
+[source,bash,role="execute",subs=attributes+]
+----
+podman push registry-{guid}.{domain}/base
 ----
 
 You have now built your first complete RHEL system as a bootc image!

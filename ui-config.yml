@@ -16,31 +16,19 @@ antora:
       label: "Updating image mode hosts"
       solveButton: false
     - name: "module-05"
-      label: "Rolling back an image mode host"
-      solveButton: false
-    - name: "module-06"
       label: "Adding security and compliance requirements"
       solveButton: false
-    - name: "module-07"
-      label: "Applying OpenSCAP policies"
-      solveButton: false
-    - name: "module-08"
+    - name: "module-06"
       label: "Adding Troubleshooting tools"
       solveButton: false
-    - name: "module-10"
+    - name: "module-07"
       label: "Troubleshooting an image mode deployment"
       solveButton: false
-    - name: "module-11"
+    - name: "module-08"
       label: "Using the standard baseline image"
       solveButton: false
-    - name: "module-12"
+    - name: "module-09"
       label: "Exploring container build practices"
-      solveButton: false
-    - name: "module-13"
-      label: "Derived builds and updating the chain"
-      solveButton: false
-    - name: "module-14"
-      label: "Extra credit module: Scratch builds"
       solveButton: false
 tabs:
   - name: "Build host terminal"
@@ -51,14 +39,11 @@ tabs:
       - module-02
       - module-03
       - module-04
-      - module-05
-      - module-10
+      - module-07
   - name: ">_ Sec SSH session"
     url: /wetty_security_vm/ssh/root
     modules:
+      - module-05
       - module-06
-      - module-07
       - module-08
-      - module-11
-      - module-12
-      - module-13
+      - module-09

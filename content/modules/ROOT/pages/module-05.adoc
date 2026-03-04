@@ -1,157 +1,219 @@
-== Image mode good ideas
-This is a decent start for our gold image, but let's address a few more topics.
-Our goals are to centralize our configuration and build processes while making it easier to work across teams.
+= Security and Compliance in an Image Mode world.
 
-The use of application containers has provided some good practices based on real world experience.
-We'll explore a few of these in context for image mode configurations.
+Building and deploying using Image Mode has some built-in benefits from a security and compliance perspective.  
+First, systems deployed with Image Mode are more likely to be built to your desired specifications, and second it is much easier to make sure that they stay that way.  
+In the next few modules we'll walk through how to add security and compliance into your build, and also how to apply that policy using automation.  
+We will also touch a bit on drift and getting your systems back into compliance after an event.
 
-== Containerfile idioms
-==== _Before proceeding, make sure you have changed back to the tab labeled "Build host'._
+[NOTE] 
+====
+Because we will be making significant changes to our system, we are going to start fresh.  First we will build an updated bootc image, and then we will build a new guest vm just like we did at the beginning of the lab.
+====
 
-=== Additional labels and metadata
-One of the benefits of containerized builds is extra metadata available by default.
-Instead of relying on naming conventions or `bootc status` output, we can add information to the images via labels.
+== Adding security controls to your image: FAPolicyd
+==== _Click on the tab labeled "Build host"_ 
+One of the common services the security team uses to meet compliance and security mandates is FAPolicyD.
+The File Access Policy Daemon is a service that implements application allow-listing.  So let's see what it looks like to simply add it to our `Containerfile`.  
 
-Let's add some basic information, the contact email for the team who owns the image and the "vendor", here our company.
-These will be added and can be queried remotely in the registry.
-There are other labels that are created by Red Hat when published that include RHEL version and more.
+NOTE: We will be adding these changes after the `systemctl mask` line at the end of the existing file
+
+[source,bash,role="execute",subs=attributes+]
+----
+cd ~/bootc-base
+nano Containerfile
+----
+
+
+FAPolicyD is one of the standard tools the security team asked for, including the audit subsystem and SELinux troubleshooting. We'll also install the packages for the SCAP policy tools now since we know that's coming.
+
+[source,dockerfile,role="execute",subs=attributes+]
+----
+# Security and Hardening 
+RUN dnf -y install audit fapolicyd openscap-utils scap-security-guide setroubleshoot-server
+
+RUN systemctl enable fapolicyd
+----
+
+Notice the only thing that needs to be defined to get FAPolicyD running at boot is a standard `systemctl` call.
+Since we are targeting full RHEL systems and not containers, systemd is always running and available post-install so there's no need for any additional `init` environments or `ENTRYPOINT` definitions.
+ 
+
+= Building policy into a bootc image
+
+Now, we could add all of the various packages and configuration changes directly to our Containerfile and achieve the security team's goals.  But, much like a package mode RHEL host, we can leverage automation to get the bulk of the work done using SCAP policies. 
+
+== Tailoring SCAP for compliance
+==== _Click on the tab labeled "Build host terminal"_ 
+
+The security team uses the CIS Level 1 policy with some deviations for all public facing webservers.
+To setup our openscap policy, we will first make a change to the policy using `autotailor`. 
+You will likely need to tailor any compliance policy to your organization's needs as these aren't one size fits all.
+In our example we are simply turning root logins back on so as not to break the lab environment. 
+
+To do this, we will tailor our policy right on our build host.
+Tailoring files are a common format and as long as they are built against the right policy, they can be created on any host.
+The `autotailor` command comes from the `openscap-utils` package, and requires that the `scap-security-guide` is also installed.
+
+[source,bash,role="execute",subs=attributes+]
+----
+cd ~/bootc-base
+autotailor --unselect xccdf_org.ssgproject.content_rule_sshd_disable_root_login \
+  --new-profile-id cis_server_l1_customized \
+  --output cis_server_l1_customized.xml \
+  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml cis_server_l1
+----
+<.> The rule to deselect
+<.> The new policy name to use
+<.> The name of the policy file to write
+<.> The original policy to tailor
+
+Then we'll modify our Containerfile, removing the line where we enable FAPolicyd, and replacing it with an oscap policy block. Notice that the cis_server_l1_customized.xml file that we generated with autotailor is used here. This file will contain your modified policy, and can be re-used on other build that you would like to apply the same custom policy to. 
+
+We'll use the new `oscap-im` tool to scan and remediate the image at build time.
+This tool is also part of the `openscap-utils` package and is specially designed for operating inside a containerized build.
+
+Remember, labels are for humans, so adding something about the compliance configuration that can be read from the registry or locally without starting or examining a running host is helpful.
+
+Open up the Containerfile, and then add the following after the `systemctl enable` line.
 
 [source,bash,role="execute",subs=attributes+]
 ----
 nano Containerfile
 ----
 
-These can go anywhere, but typically they will be near the start of the Containerfile, after the `FROM` line.
-Remember, like any other container image build, `bootc` image builds will also use the local build cache.
-If you place these before the package install you will trigger all of those steps in the build.
 [source,dockerfile,role="execute",subs=attributes+]
 ----
-# Set up some variables and labels to ID images in our environments
-MAINTAINER sysadmins@example.com
-# RHEL version inherited from bootc base as redhat.version-id and release
-LABEL vendor="Example Corp" 
-----
+LABEL profile="CIS Server Level 1 base image"
+ENV profileID=cis_server_l1_customized <.>
 
-=== Git repository layout
-We briefly mentioned that responsibility for `/etc` is split between the image and the running host.
-This allows for centralizing common configs in our builds, while allowing for runtime flexibility.
-Most of the image controlled system software is in `/usr` making it a good location for things we absolutely want controlled via the image only.
+COPY $profileID.xml /tmp/$profileID.xml
+RUN oscap-im --profile $profileID --tailoring-file /tmp/$profileID.xml /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml <.>
+----
+<.> An environment variable to define the policy to apply
+<.> The new `oscap-im` command using our tailored policy
 
-Based in plaintext definition, image mode builds lend themselves to 'Infrastructure as Code' and 'GitOps' style practices.
-For example, creating a single version controlled repository to hold all of the build and configuration information for a single target image keeps everything centralized and maintainable.
-Package mode builds tend to have multiple different build artifacts spread across different tools, kickstart files, ansible playbooks and templates, version controlled config files, which can make this sort of IaC repo a little more challenging.
+With that in place, we can build our bootc image again. 
 
-Let's use that mindset and set up a directory structure that mimics `/etc` and `/usr` to hold the specific configurations that will apply to the hosts created from this image.
-This allows us to add all the configs at once with a single COPY command and in a single layer of the image.
-
-NOTE: These are local, relative to the location of the Containerfile, not the build host filesystem. Remember we're thinking about this as a git repository.
-
-==== Create the structure
-[source,bash,role="execute",subs=attributes+]
-----
-mkdir -p etc/sudoers.d
-----
-[source,bash,role="execute",subs=attributes+]
-----
-mkdir -p etc/ostree
-----
-[source,bash,role="execute",subs=attributes+]
-----
-mkdir -p usr/lib/bootc/kargs.d
-----
-
-==== Organize our configs
-[source,bash,role="execute",subs=attributes+]
-----
-mv 10-wheel etc/sudoers.d
-----
-[source,bash,role="execute",subs=attributes+]
-----
-mv console_kargs.toml usr/lib/bootc/kargs.d/05-cloud-kargs.toml
-----
-[source,bash,role="execute",subs=attributes+]
-----
-mv auth.json etc/ostree/
-----
-
-Inspect the directories and files we just organized. 
-[source,bash,role="execute",subs=attributes+]
-----
-tree $(pwd)/{etc,usr}
-----
-....
-/root/etc
-├── ostree
-│   └── auth.json
-└── sudoers.d
-    └── 10-wheel
-/root/usr
-└── lib
-    └── bootc
-        └── kargs.d
-            └── 05-cloud-kargs.toml
-
-7 directories, 3 files
-....
-
-We'll take a page from application container design and use the `COPY` directive to manage our central configs as if they were directories on the end host.
-Each directive in the Containerfile adds a new layer to the resulting image.
-Understanding layering will help design images that make the most efficient use of the local build cache and network updates.
-
-Replace the 3 individual file COPY lines with these two lines to copy our new directories to the final host locations. 
-[source,dockerfile,role="execute",subs=attributes+]
-----
-COPY etc/ /etc
-COPY usr/ /usr
-----
-
-=== Managing updates
-We briefly mentioned that by default, there's a timer active that will apply updates to an image mode host.
-In this lab, we don't want the timer updating the host unexpectedly, and you may not want that either.
-One simple way to disable the timer is to mask the service with `systemd`. 
-This will ensure that the service isn't unexpectedly enabled after a change or update.
-Since this is a systemd timer, you can manage and modify the definition to fit your environment by creating a new service file.
-[source,dockerfile,role="execute",subs=attributes+]
-----
-RUN systemctl mask bootc-fetch-apply-updates.timer
-----
-
-With our updated Containerfile, let's do a final build.
 [source,bash,role="execute",subs=attributes+]
 ----
 podman build --file Containerfile --tag registry-{guid}.{domain}/base
 ----
+As the bootc image builds, you will see output similar to this as the openscap profile is getting applied to the image. 
+....
+xccdf_org.ssgproject.content_rule_package_aide_installed:pass
+xccdf_org.ssgproject.content_rule_aide_build_database:fail
+xccdf_org.ssgproject.content_rule_aide_check_audit_tools:fail
+xccdf_org.ssgproject.content_rule_aide_periodic_cron_checking:fail
+xccdf_org.ssgproject.content_rule_configure_crypto_policy:pass
+xccdf_org.ssgproject.content_rule_configure_ssh_crypto_policy:pass
+xccdf_org.ssgproject.content_rule_partition_for_dev_shm:notapplicable
+xccdf_org.ssgproject.content_rule_partition_for_tmp:notapplicable
+xccdf_org.ssgproject.content_rule_dconf_db_up_to_date:notapplicable
+....
+
+After it completes, push the new image.
 
 [source,bash,role="execute",subs=attributes+]
 ----
 podman push registry-{guid}.{domain}/base
 ----
 
-==== Test the update on the VM
-==== _Click on the tab labeled "Ops SSH session"_ 
-
-Previously, we staged the update and then manually rebooted the system into the staged image.
-This provides a lot of control to update before a maintenance window and apply the update when downtime can be negotiated.
-The `bootc` commands can also reboot immediately on success when given the `--apply` flag.
+Since we've added a few labels now, let's use `skopeo` to pull them from the latest image and use `jq` to pretty up the output.
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo bootc update --apply
+skopeo inspect --format '{{json .Labels }}' docker://registry-{guid}.{domain}/base | jq
 ----
+There's quite a few labels applied by default that describe RHEL version, architecture, creation dates, release info, and if this is in fact a bootc image. There's also our CIS profile and our company name as the vendor.
 
-===== _Log back into the VM by clicking the `reconnect` button or the refresh icon in the tab title._
+Now that we have our new image built, let's build a new system using this new image, and see how it measures up to our securuty expectations.
 
-There are other options for `upgrade` to help with planning changes to the hosts, like `--check`.
-This will compare the image in the registry with what's on the host, useful to double check you've published an update.
+
+== Build the VM
+
+Now, we can build a new disk image, and start our new VM. 
+
 [source,bash,role="execute",subs=attributes+]
 ----
-sudo bootc upgrade --check
+cd ~
+podman run --rm --privileged --security-opt label=type:unconfined_t \
+  --volume ./config.toml:/config.toml \
+  --volume /var/lib/containers/storage:/var/lib/containers/storage \
+  --volume .:/output \
+  registry.redhat.io/rhel10/bootc-image-builder:10.1 \
+  --type qcow2 \
+  registry-{guid}.{domain}/base
+----
+
+Now let's copy that disk image to the proper location.  
+[source,bash,role="execute",subs=attributes+]
+----
+cp -f qcow2/disk.qcow2 /var/lib/libvirt/images/security-vm.qcow2
+----
+
+Now we can build that the same way we created the Ops VM.
+
+[source,bash,role="execute",subs=attributes+]
+----
+virt-install --name security-vm \
+  --disk /var/lib/libvirt/images/security-vm.qcow2 \
+  --import \
+  --memory 4096 \
+  --graphics none \
+  --osinfo rhel10-unknown \
+  --noautoconsole \
+  --noreboot
+----
+
+After that completes, you will need to start up security-vm, and then you will find the new system in the Sec SSH session tab.
+
+[source,bash,role="execute",subs=attributes+]
+----
+virsh start security-vm
+----
+
+== Testing FAPolicyd
+==== _Click on the tab labeled "Sec SSH session"_ 
+
+If you recall, our first task was to enable fapolicyd directly, let's see if its working. 
+
+The File Access Policy daemon's job is to prevent you from running unapproved applications.  Out of the box, it does this using a relatively simple application allow-list that has known trusted paths for installed binaries.  
+[source,bash,role="execute",subs=attributes+]
+----
+sudo fapolicyd-cli -l
+----
+
+Since the system software deployed on an image mode host is part of a read-only filesystem, we can't simply overwrite a binary with a trusted path.
+To test whether it's working, we can just take a known good binary, and put it somewhere odd, and then try to run it. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+cp /bin/ls ~
+----
+
+You should not be allowed to run `ls` from your home directory. 
+[source,bash,role="execute",subs=attributes+]
+----
+~/ls
 ----
 ....
-No changes in: docker://registry-mjghb.apps.ocpvdev01.rhdp.net/base
+-bash: /home/core/ls: Operation not permitted
 ....
 
-== Core principles
-In this exercise we focused on making some idiomatic changes to the Containerfile and exploring how image mode hosts handle files. 
-We looked at how the build files may differ from the collection of automation and files for a package mode host.
+Great! FAPolicyd works!  
 
-We've satisfied the basic needs of the operations team, in the next section we'll tackle the security requirements and dig deeper into some of these topics.
+We also went a step further, and applied an entire SCAP policy.  The OpenSCAP tooling also allows us to test a system for compliance, so we can use that tool to see if the policy was applied as we expected it to be when the container was built. 
+
+[source,bash,role="execute",subs=attributes+]
+----
+sudo oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_cis_server_l1 --results ./results  /usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml
+----
+[source,bash,role="execute",subs=attributes+]
+----
+sudo grep score results
+----
+You should see a score in the 90's like the output below:
+....
+    <score system="urn:xccdf:scoring:default" maximum="100.000000">92.530121</score>
+....
+
+Great!  Now we have an immutable OS, that matches our standards.  But, what do we do about that inevitable drift?  In the next module we'll address that.
