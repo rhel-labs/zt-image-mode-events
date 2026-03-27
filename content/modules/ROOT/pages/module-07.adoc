@@ -6,6 +6,47 @@ The `switch` operation allows administrators to change the system software to a 
 
 In this lab we'll explore this feature as well as expand on the idea of standardized builds and derived images.
 
+== Working with the Developer's Application
+
+=== Introducing the Application
+
+While you've been building a secure baseline image with compliance policies and management tools, the development team has been working on a new web application. They've created a Python Flask service called `python-hostinfo` that displays system information, and they've built it as a bootc image for their proof of concept.
+
+Their application repository has been cloned to your build host at `~/bootc-version`. Let's take a quick look at what's there:
+
+[source,bash,role="execute",subs=attributes+]
+----
+ls ~/bootc-version
+----
+
+The repository contains:
+- **Containerfile** - Builds the application as a bootc image from the Red Hat `rhel-bootc:10.1` base
+- **app.py** and **helpers.py** - The Flask web application
+- **info-app.service** - systemd service definition for the application
+- **info-app.conf** - nginx reverse proxy configuration
+- **nginx_connect_flask_sock.te** - SELinux policy module for nginx/Gunicorn communication
+- **static/** and **templates/** - Web assets
+- **requirements.txt** - Python dependencies
+
+The application stack uses Python Flask with Gunicorn as the application server, fronted by nginx as a reverse proxy, all managed by systemd services.
+
+=== The Problem Report
+
+The developers report an issue: their image works perfectly when provisioning a fresh machine with `bootc-image-builder`. However, when they tried to **switch** an existing running system to their application image (to save time and reuse infrastructure), nginx fails to start with errors about missing `/var` directories.
+
+They weren't sure if this was related to the RHEL version difference (they tested on RHEL 9.6) or something else about the image mode deployment model.
+
+=== What We'll Do
+
+In these next modules, we'll:
+1. **Investigate and fix** the switch deployment issue they encountered
+2. **Integrate** their application with your secure baseline image
+3. **Optimize** the build using container best practices
+
+This will demonstrate how to work with derived images and combine work from different teams (operations baseline + developer application = production-ready image).
+
+Let's start by reproducing and troubleshooting their reported issue.
+
 [#write-containerfiles]
 == Testing the developers bug report
 

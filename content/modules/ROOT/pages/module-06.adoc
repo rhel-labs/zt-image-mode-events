@@ -109,4 +109,4 @@ This can be useful for all sorts of tools that are only temporarily or sporadica
 Centralizing package control at the image layer is useful, but sometimes local changes are needed.
 Image mode provides unique ways to temporarily provide packages or other local changes.
 
-We'll continue the troubleshooting theme in the next section, looking at the developer's recent image mode Containerfile.
+We'll continue the troubleshooting theme in the next section. The development team has been working on a web application and has built it as a bootc image. In the next module, we'll help them troubleshoot a deployment issue they've encountered, then integrate their application with the secure baseline we've built.
