@@ -21,6 +21,8 @@ cat >> Containerfile << 'EOF'
 # Security and Hardening
 RUN dnf -y install audit fapolicyd openscap-utils scap-security-guide setroubleshoot-server
 
+RUN systemctl enable fapolicyd
+
 LABEL profile="CIS Server Level 1 base image"
 ENV profileID=cis_server_l1_customized
 
@@ -33,5 +35,38 @@ podman build --file Containerfile --tag registry-${GUID}.${DOMAIN}/base 2>&1 | t
 
 # Push to registry
 podman push registry-${GUID}.${DOMAIN}/base
+
+# Create the disk image using bootc-image-builder
+# This takes 2+ minutes
+cd ~
+podman run --rm --privileged --security-opt label=type:unconfined_t \
+  --volume ./config.toml:/config.toml \
+  --volume /var/lib/containers/storage:/var/lib/containers/storage \
+  --volume .:/output \
+  registry.redhat.io/rhel10/bootc-image-builder:10.1 \
+  --type qcow2 \
+  registry-${GUID}.${DOMAIN}/base 2>&1 | tee /tmp/module-03-image-builder.log
+
+# Verify the image was created
+if [ -f qcow2/disk.qcow2 ]; then
+    echo "VM disk image created successfully" >> /tmp/progress.log
+else
+    echo "ERROR: VM disk image not created" >> /tmp/progress.log
+    exit 1
+fi
+cp /root/qcow2/disk.qcow2 /var/lib/libvirt/images/security-vm.qcow2
+# Create the virtual machine
+virt-install \
+  --name security-vm \
+  --memory 4096 \
+  --vcpus 2 \
+  --disk /var/lib/libvirt/images/security-vm.qcow2 \
+  --import \
+  --os-variant rhel10-unknown \
+  --network network=default \
+  --graphics none \
+  --noautoconsole
+
+virsh start security-vm
 
 echo "Module-05 solve complete - security policy applied" >> /tmp/progress.log

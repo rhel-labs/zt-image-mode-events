@@ -9,6 +9,11 @@ In this lab, we'll take a pattern from the application container world to move t
 == Using multi-stage builds
 ==== _Click on the tab labeled "Build host"_ 
 
+[NOTE]
+====
+If the Build host tab still has you looking at the vm console. press `Ctrl + ]` to exit the serial console.
+====
+
 One common pattern in container builds is offloading the creation of binary components that need to be generated at build time, but don't need to carry all of the dependencies into the final image. 
 The OCI specification allows for multiple image and associated actions to be defined in a single Containerfile.
 This is referred to as a multi-stage build and can be used to separate portions of the build while making them still accessible later in the process. 
@@ -66,7 +71,7 @@ FROM registry-{guid}.{domain}/base AS host <.>
 ----
 <.> name our application definition stage
 
-Finally, replace the old block with this one that copies from the `policy` stage
+Finally, replace the old block (The block mentioned above, that starts with "WORKDIR" and ends with semanage) with this one that copies from the `policy` stage
 [source,dockerfile,role="execute",subs=attributes+]
 ----
 # Deploy the binary SELinux policy and update the labeling

@@ -34,17 +34,19 @@ else
     echo "ERROR: VM disk image not created" >> /tmp/progress.log
     exit 1
 fi
-
+cp /root/qcow2/disk.qcow2 /var/lib/libvirt/images/bootc-vm.qcow2
 # Create the virtual machine
 virt-install \
   --name bootc-vm \
   --memory 4096 \
   --vcpus 2 \
-  --disk qcow2/disk.qcow2 \
+  --disk /var/lib/libvirt/images/bootc-vm.qcow2 \
   --import \
   --os-variant rhel10-unknown \
   --network network=default \
   --graphics none \
   --noautoconsole
+
+virsh start bootc-vm
 
 echo "Module-03 solve complete - VM created" >> /tmp/progress.log
