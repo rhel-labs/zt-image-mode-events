@@ -140,3 +140,5 @@ fi
 rm -rf $TMPDIR
 
 mkdir ~/scratch
+
+echo "${GUID} >> /tmp/guid.tmp
