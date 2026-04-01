@@ -8,7 +8,7 @@ sed -i 's/hosts:\s\+ files/& libvirt libvirt_guest/' /etc/nsswitch.conf
 
 # Log into terms based registry and stage bootc and bib images
 mkdir -p ~/.config/containers
-cat<<EOF> ~/.config/containers/auth.json
+cat <<EOF> ~/.config/containers/auth.json
 {
     "auths": {
       "registry.redhat.io": {
@@ -141,4 +141,5 @@ rm -rf $TMPDIR
 
 mkdir ~/scratch
 
-echo "${GUID} >> /tmp/guid.tmp
+echo "export GUID=${GUID}" >> /etc/profile
+echo "export DOMAIN=${DOMAIN}" >> /etc/profile 

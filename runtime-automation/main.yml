@@ -49,9 +49,6 @@
     shell: "sh -x /tmp/runtime-scripts/{{ module_dir }}/{{ module_stage }}-{{ ansible_host }}.sh > /tmp/runtime-scripts/{{ module_dir }}/{{ module_stage }}-{{ ansible_host }}.log 2>&1"
     become: true
     register: r_result
-    environment:
-      GUID: "{{ lookup('ansible.builtin.env', 'GUID') }}"
-      DOMAIN: "{{ lookup('ansible.builtin.env', 'DOMAIN') }}"
 
   - name: Output script result
     ansible.builtin.debug:
