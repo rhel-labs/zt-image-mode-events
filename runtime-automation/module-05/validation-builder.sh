@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Validating module-05: Security and compliance" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 cd ~/bootc-base || exit 1
 
 # Check that tailored policy exists

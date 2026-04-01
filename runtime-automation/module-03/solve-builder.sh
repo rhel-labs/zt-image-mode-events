@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Solving module-03: Deploying bootc VM" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 cd ~ || exit 1
 
 # Get the SSH public key

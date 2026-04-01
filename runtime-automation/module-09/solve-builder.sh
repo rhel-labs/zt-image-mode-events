@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Solving module-09: Multi-stage container build" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 # This assumes the app-test image and repo exist from previous modules
 cd ~/bootc-version || exit 1
 

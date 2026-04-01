@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Solving module-02: Building first bootc image" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 # Create the bootc-base directory structure
 mkdir -p ~/bootc-base/etc/sudoers.d
 mkdir -p ~/bootc-base/etc/ostree

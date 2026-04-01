@@ -1,6 +1,10 @@
 #!/bin/sh
 echo "Validating module-03: VM deployment" >> /tmp/progress.log
 
+
+source /etc/profile.d/lab.sh
+
+
 # Check that config.toml exists
 if [ ! -f ~/config.toml ]; then
     echo "FAIL: config.toml should exist in home directory"

@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Solving module-05: Adding security and compliance" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 cd ~/bootc-base || exit 1
 
 # Create tailored SCAP policy

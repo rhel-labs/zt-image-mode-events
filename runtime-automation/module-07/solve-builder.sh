@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Solving module-07: Troubleshooting bootc deployment" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 # Change to the application repository
 cd ~/bootc-version || exit 1
 

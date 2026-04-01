@@ -1,6 +1,10 @@
 #!/bin/sh
 echo "Validating module-02: First bootc image build" >> /tmp/progress.log
 
+
+source /etc/profile.d/lab.sh
+
+
 # Check that bootc-base directory exists
 if [ ! -d ~/bootc-base ]; then
     echo "FAIL: ~/bootc-base directory should exist"

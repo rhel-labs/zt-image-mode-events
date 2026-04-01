@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Solving module-08: Using standard baseline image" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 # Make sure we're in the right repository
 cd ~/bootc-version || exit 1
 

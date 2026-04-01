@@ -141,5 +141,5 @@ rm -rf $TMPDIR
 
 mkdir ~/scratch
 
-echo "export GUID=${GUID}" >> /etc/profile
-echo "export DOMAIN=${DOMAIN}" >> /etc/profile 
+echo "export GUID=${GUID}" >> /etc/profile.d/lab.sh
+echo "export DOMAIN=${DOMAIN}" >> /etc/profile.d/lab.sh

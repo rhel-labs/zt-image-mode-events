@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Validating module-09: Multi-stage build" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 cd ~/bootc-version || exit 1
 
 # Check that Containerfile has multiple FROM statements

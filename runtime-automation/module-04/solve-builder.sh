@@ -1,6 +1,10 @@
 #!/bin/sh
 echo "Solving module-04: Updating bootc image" >> /tmp/progress.log
 
+
+source /etc/profile.d/lab.sh
+
+
 cd ~/bootc-base || exit 1
 
 # Create sudoers drop-in file

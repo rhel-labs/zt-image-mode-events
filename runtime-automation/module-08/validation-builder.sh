@@ -1,6 +1,8 @@
 #!/bin/sh
 echo "Validating module-08: Standard baseline deployment" >> /tmp/progress.log
 
+source /etc/profile.d/lab.sh
+
 # Check that we're in the right directory
 if [ ! -d ~/bootc-version ]; then
     echo "FAIL: bootc-version repository not found"
