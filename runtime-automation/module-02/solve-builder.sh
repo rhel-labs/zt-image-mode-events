@@ -41,6 +41,7 @@ EOF
 
 # Login to registry and create auth file
 podman login -u core -p redhat registry-${GUID}.${DOMAIN} --authfile=auth.json
+podman login -u core -p redhat registry-${GUID}.${DOMAIN}
 
 # Move auth file to etc structure
 mv auth.json etc/ostree/auth.json
