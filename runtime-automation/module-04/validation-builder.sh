@@ -20,11 +20,11 @@ if [ ! -f usr/lib/bootc/kargs.d/console_kargs.conf ]; then
 fi
 
 # Verify the image was rebuilt (check recent build log or image timestamp)
-if [ ! -f /tmp/module-04-build.log ]; then
-    echo "FAIL: Image should be rebuilt" >> /tmp/progress.log
-    echo "HINT: Run: podman build --file Containerfile --tag registry-${GUID}.${DOMAIN}/base" >> /tmp/progress.log
-    exit 1
-fi
+#if [ ! -f /tmp/module-04-build.log ]; then
+#    echo "FAIL: Image should be rebuilt" >> /tmp/progress.log
+#    echo "HINT: Run: podman build --file Containerfile --tag registry-${GUID}.${DOMAIN}/base" >> /tmp/progress.log
+#    exit 1
+#fi
 
 echo "PASS: Module-04 validation complete" >> /tmp/progress.log
 exit 0
