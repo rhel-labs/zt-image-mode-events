@@ -122,10 +122,11 @@ sudo bootc update --soft-reboot=required --apply
 
 As a final sanity check, is the app http://hostinfo-{guid}.{domain}/[up and running?,window=_blank]
 
-We'll continue the exploration of derived builds and reboots in the next exercise.
 
 == Core principles
 We've addressed creating images and hosts that are based on other images, allowing standard operating environments to be created and maintained centrally and used simply by other teams.
 We looked at how to separate build requirements from runtime requirements in our Containerfile.
 We also looked at different ways reboots can affect hosts.
 
+== Thank you
+This concludes the workshop, thank you for attending! 
