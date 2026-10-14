@@ -13,9 +13,9 @@ echo "Validating module-04: Image updates" >> /tmp/progress.log
 # fi
 
 # Check kargs file exists
-# if [ ! -f usr/lib/bootc/kargs.d/console_kargs.conf ]; then
+# if [ ! -f usr/lib/bootc/kargs.d/console_kargs.toml ]; then
 #     echo "FAIL: Kernel args file should exist" >> /tmp/progress.log
-#     echo "HINT: Create file at usr/lib/bootc/kargs.d/console_kargs.conf" >> /tmp/progress.log
+#     echo "HINT: Create file at usr/lib/bootc/kargs.d/console_kargs.toml" >> /tmp/progress.log
 #     exit 1
 # fi
 

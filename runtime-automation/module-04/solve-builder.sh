@@ -14,7 +14,7 @@ cat > etc/sudoers.d/10-wheel << 'EOF'
 EOF
 
 # Create kernel args configuration
-cat > usr/lib/bootc/kargs.d/console_kargs.conf << 'EOF'
+cat > usr/lib/bootc/kargs.d/console_kargs.toml << 'EOF'
 kargs = ["console=tty0", "console=ttyS0,115200n8"]
 EOF
 

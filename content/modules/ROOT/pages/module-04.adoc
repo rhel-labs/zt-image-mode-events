@@ -41,7 +41,7 @@ For image mode systems, `/boot` is read-only, so we have support for passing ker
 
 [source,bash,role="execute",subs=attributes+]
 ----
-nano usr/lib/bootc/kargs.d/console_kargs.conf
+nano usr/lib/bootc/kargs.d/console_kargs.toml
 ----
 
 Add the following and save the file
